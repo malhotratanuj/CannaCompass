@@ -10,12 +10,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get strain recommendations based on user preferences
   app.post("/api/recommendations", async (req: Request, res: Response) => {
     try {
+      console.log("Received recommendation request:", JSON.stringify(req.body));
       const { mood, experienceLevel, effects, flavors, consumptionMethod } = req.body;
       
       if (!mood || !experienceLevel) {
+        console.log("Missing required fields: mood or experienceLevel");
         return res.status(400).json({ message: "Mood and experience level are required" });
       }
       
+      console.log("Calling storage.getStrainRecommendations...");
       const recommendations = await storage.getStrainRecommendations({
         mood,
         experienceLevel,
@@ -23,6 +26,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         flavors,
         consumptionMethod
       });
+      
+      console.log(`Got ${recommendations.length} recommendations`);
+      // Debug: log the first recommendation if available
+      if (recommendations.length > 0) {
+        console.log("First recommendation:", recommendations[0].name);
+      }
       
       return res.json({ recommendations });
     } catch (error) {

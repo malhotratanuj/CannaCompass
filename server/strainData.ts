@@ -2,6 +2,11 @@ import { Strain } from "@shared/schema";
 
 // Log to ensure this file is being loaded
 console.log("Loading strain data...");
+// Log the actual strain data to make sure it's valid
+setTimeout(() => {
+  console.log("First strain:", JSON.stringify(strains[0]));
+  console.log("Total strains:", strains.length);
+}, 1000);
 
 export const strains: Strain[] = [
   {

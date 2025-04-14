@@ -119,106 +119,117 @@ export class DatabaseStorage implements IStorage {
   
   // Strain recommendations - using the same algorithm from MemStorage
   async getStrainRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
-    // Enhanced recommendation algorithm based on mood and filters
-    console.log("Strain data length:", strains.length);
-    console.log("Preferences received:", JSON.stringify(preferences));
-    let filteredStrains = strains;
-    
-    // Filter by mood with expanded effect mappings to catch more strains
-    const moodEffectMap: Record<string, string[]> = {
-      'relaxed': ['Relaxing', 'Calming', 'Peaceful', 'Relaxation', 'Stress Relief', 'Pain Relief'],
-      'energetic': ['Energetic', 'Uplifting', 'Active', 'Energy', 'Social Uplift'],
-      'creative': ['Creative', 'Inspired', 'Creativity', 'Euphoric'],
-      'focused': ['Focused', 'Clear-headed', 'Productive', 'Focus', 'Clear'],
-      'sleepy': ['Sleepy', 'Sedative', 'Restful', 'Sleep Aid', 'Relaxing'],
-      'happy': ['Happy', 'Euphoric', 'Giggly', 'Euphoria', 'Uplifting']
-    };
-    
-    // Add secondary effect mappings (strains with these effects may partially satisfy the mood)
-    const secondaryMoodEffects: Record<string, string[]> = {
-      'relaxed': ['Happy', 'Pain Relief'],
-      'energetic': ['Happy', 'Euphoric', 'Focus'],
-      'creative': ['Happy', 'Uplifting', 'Energetic'],
-      'focused': ['Uplifting', 'Energy', 'Creativity'],
-      'sleepy': ['Pain Relief', 'Calming'],
-      'happy': ['Relaxing', 'Creative', 'Social Uplift']
-    };
-    
-    // Only filter by mood if a mood is selected
-    if (preferences.mood && preferences.mood.toLowerCase() !== '') {
-      const primaryDesiredEffects = moodEffectMap[preferences.mood.toLowerCase()] || [];
-      const secondaryDesiredEffects = secondaryMoodEffects[preferences.mood.toLowerCase()] || [];
+    try {
+      // Enhanced recommendation algorithm based on mood and filters
+      console.log("Strain data length:", strains.length);
+      console.log("Preferences received:", JSON.stringify(preferences));
       
-      // First, try to match with primary effects
-      let primaryMatches = filteredStrains.filter(strain => 
-        strain.effects.some(effect => 
-          primaryDesiredEffects.some(desiredEffect => 
-            effect.toLowerCase().includes(desiredEffect.toLowerCase())
-          )
-        )
-      );
+      // Start with a copy of the strains array to avoid modifying the original
+      let filteredStrains = [...strains];
       
-      // If we have enough primary matches, use those
-      if (primaryMatches.length >= 3) {
-        filteredStrains = primaryMatches;
-      } 
-      // Otherwise, include secondary matches as well
-      else {
-        filteredStrains = filteredStrains.filter(strain => 
+      // Filter by mood with expanded effect mappings to catch more strains
+      const moodEffectMap: Record<string, string[]> = {
+        'relaxed': ['Relaxing', 'Calming', 'Peaceful', 'Relaxation', 'Stress Relief', 'Pain Relief'],
+        'energetic': ['Energetic', 'Uplifting', 'Active', 'Energy', 'Social Uplift'],
+        'creative': ['Creative', 'Inspired', 'Creativity', 'Euphoric'],
+        'focused': ['Focused', 'Clear-headed', 'Productive', 'Focus', 'Clear'],
+        'sleepy': ['Sleepy', 'Sedative', 'Restful', 'Sleep Aid', 'Relaxing'],
+        'happy': ['Happy', 'Euphoric', 'Giggly', 'Euphoria', 'Uplifting']
+      };
+      
+      // Add secondary effect mappings (strains with these effects may partially satisfy the mood)
+      const secondaryMoodEffects: Record<string, string[]> = {
+        'relaxed': ['Happy', 'Pain Relief'],
+        'energetic': ['Happy', 'Euphoric', 'Focus'],
+        'creative': ['Happy', 'Uplifting', 'Energetic'],
+        'focused': ['Uplifting', 'Energy', 'Creativity'],
+        'sleepy': ['Pain Relief', 'Calming'],
+        'happy': ['Relaxing', 'Creative', 'Social Uplift']
+      };
+      
+      // Only filter by mood if a mood is selected
+      if (preferences.mood && preferences.mood.toLowerCase() !== '') {
+        const primaryDesiredEffects = moodEffectMap[preferences.mood.toLowerCase()] || [];
+        const secondaryDesiredEffects = secondaryMoodEffects[preferences.mood.toLowerCase()] || [];
+        
+        // First, try to match with primary effects
+        let primaryMatches = filteredStrains.filter(strain => 
           strain.effects.some(effect => 
-            primaryDesiredEffects.concat(secondaryDesiredEffects).some(desiredEffect => 
+            primaryDesiredEffects.some(desiredEffect => 
               effect.toLowerCase().includes(desiredEffect.toLowerCase())
             )
           )
         );
+        
+        // If we have enough primary matches, use those
+        if (primaryMatches.length >= 3) {
+          filteredStrains = primaryMatches;
+        } 
+        // Otherwise, include secondary matches as well
+        else {
+          filteredStrains = filteredStrains.filter(strain => 
+            strain.effects.some(effect => 
+              primaryDesiredEffects.concat(secondaryDesiredEffects).some(desiredEffect => 
+                effect.toLowerCase().includes(desiredEffect.toLowerCase())
+              )
+            )
+          );
+        }
       }
       
-      // If still no matches, return a few default strains instead of nothing
+      // If we got no matches after mood filtering or if there was an issue, use all strains
       if (filteredStrains.length === 0) {
-        console.log(`No strains match the mood: ${preferences.mood}. Using a default selection.`);
-        filteredStrains = strains.slice(0, 4);
+        console.log("No matches after mood filtering, using all strains");
+        filteredStrains = [...strains];
       }
-    }
-    
-    // Filter by additional effects if specified
-    if (preferences.effects && preferences.effects.length > 0) {
-      filteredStrains = filteredStrains.filter(strain => 
-        preferences.effects!.some(effect => 
-          strain.effects.some(strainEffect => 
-            strainEffect.toLowerCase().includes(effect.toLowerCase())
+      
+      // Filter by additional effects if specified
+      if (preferences.effects && preferences.effects.length > 0) {
+        const beforeCount = filteredStrains.length;
+        filteredStrains = filteredStrains.filter(strain => 
+          preferences.effects!.some(effect => 
+            strain.effects.some(strainEffect => 
+              strainEffect.toLowerCase().includes(effect.toLowerCase())
+            )
           )
-        )
-      );
-    }
-    
-    // Filter by flavors if specified
-    if (preferences.flavors && preferences.flavors.length > 0) {
-      filteredStrains = filteredStrains.filter(strain => 
-        preferences.flavors!.some(flavor => 
-          strain.flavors.some(strainFlavor => 
-            strainFlavor.toLowerCase().includes(flavor.toLowerCase())
-          )
-        )
-      );
-    }
-    
-    // Adjust based on experience level
-    if (preferences.experienceLevel === 'beginner') {
-      // For beginners, filter strains with moderate THC content
-      filteredStrains = filteredStrains.filter(strain => {
-        const thcMatch = strain.thcContent.match(/(\d+)-(\d+)/);
-        if (thcMatch) {
-          const maxThc = parseInt(thcMatch[2]);
-          return maxThc < 18; // Lower THC for beginners
+        );
+        console.log(`Effects filtering: ${beforeCount} -> ${filteredStrains.length}`);
+        
+        // If filter removed all options, revert to previous set
+        if (filteredStrains.length === 0) {
+          console.log("Effects filtering removed all strains, reverting");
+          filteredStrains = [...strains];
         }
-        return true;
-      });
+      }
+      
+      // Filter by flavors if specified
+      if (preferences.flavors && preferences.flavors.length > 0) {
+        const beforeCount = filteredStrains.length;
+        filteredStrains = filteredStrains.filter(strain => 
+          preferences.flavors!.some(flavor => 
+            strain.flavors.some(strainFlavor => 
+              strainFlavor.toLowerCase().includes(flavor.toLowerCase())
+            )
+          )
+        );
+        console.log(`Flavors filtering: ${beforeCount} -> ${filteredStrains.length}`);
+        
+        // If filter removed all options, revert to previous set
+        if (filteredStrains.length === 0) {
+          console.log("Flavors filtering removed all strains, reverting");
+          filteredStrains = [...strains];
+        }
+      }
+      
+      // Return top results, sorted by relevance (for now, just by rating)
+      return filteredStrains
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 6); // Return top 6 recommendations
+    } catch (error) {
+      console.error("Error in getStrainRecommendations:", error);
+      // Return a default selection if there was an error
+      return strains.slice(0, 6);
     }
-    
-    // Return top results, sorted by relevance (for now, just by rating)
-    return filteredStrains
-      .sort((a, b) => b.rating - a.rating)
-      .slice(0, 6); // Return top 6 recommendations
   }
   
   async getStrainById(strainId: string): Promise<Strain | undefined> {
