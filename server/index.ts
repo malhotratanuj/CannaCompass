@@ -1,6 +1,11 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { startStoreFinderService } from "./storeFinder";
+
+// Load strain and dispensary data
+console.log("Loading strain data...");
+console.log("Loading dispensary data...");
 
 const app = express();
 app.use(express.json());

@@ -1,8 +1,9 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { userPreferencesSchema, savedStrainSchema } from "@shared/schema";
+import { findNearbyDispensaries, startStoreFinderService } from "./storeFinder";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
@@ -68,8 +69,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Find nearby dispensaries
-  app.post("/api/dispensaries/nearby", async (req: Request, res: Response) => {
+  // Find nearby dispensaries (using static data from storage)
+  app.post("/api/dispensaries/static", async (req: Request, res: Response) => {
     try {
       const { latitude, longitude, radius = 10 } = req.body;
       
@@ -86,6 +87,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error finding dispensaries:", error);
       return res.status(500).json({ message: "Failed to find nearby dispensaries" });
+    }
+  });
+  
+  // Find nearby dispensaries (using browser-use to search real dispensaries)
+  app.post("/api/dispensaries/nearby", async (req: Request, res: Response) => {
+    try {
+      const { latitude, longitude, address, strainIds = [] } = req.body;
+      
+      if (!latitude || !longitude) {
+        return res.status(400).json({ message: "Location coordinates are required" });
+      }
+      
+      console.log("Finding nearby dispensaries using browser-use...");
+      console.log(`Location: ${latitude}, ${longitude}`);
+      console.log(`Selected strains: ${strainIds.join(', ')}`);
+      
+      // Get strain names for the selected strain IDs
+      const strainNames: string[] = [];
+      if (strainIds && strainIds.length > 0) {
+        for (const strainId of strainIds) {
+          const strain = await storage.getStrainById(strainId);
+          if (strain) {
+            strainNames.push(strain.name);
+          }
+        }
+      }
+      
+      // Use the browser-use integration to find nearby dispensaries
+      const dispensaries = await findNearbyDispensaries(
+        { latitude, longitude, address },
+        strainNames
+      );
+      
+      return res.json({ dispensaries });
+    } catch (error) {
+      console.error("Error finding dispensaries with browser-use:", error);
+      
+      // Fallback to static data if browser-use fails
+      try {
+        console.log("Falling back to static dispensary data...");
+        const { latitude, longitude, radius = 10 } = req.body;
+        const dispensaries = await storage.findNearbyDispensaries(
+          { latitude, longitude },
+          radius
+        );
+        return res.json({ 
+          dispensaries,
+          note: "Using fallback static data because real-time search failed"
+        });
+      } catch (fallbackError) {
+        console.error("Fallback also failed:", fallbackError);
+        return res.status(500).json({ message: "Failed to find nearby dispensaries" });
+      }
     }
   });
   
