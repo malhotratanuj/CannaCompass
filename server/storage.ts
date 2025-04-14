@@ -114,29 +114,63 @@ export class MemStorage implements IStorage {
 
   // Strain recommendations
   async getStrainRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
-    // Simple recommendation algorithm based on mood and filters
+    // Enhanced recommendation algorithm based on mood and filters
     let filteredStrains = strains;
     
-    // Filter by mood
+    // Filter by mood with expanded effect mappings to catch more strains
     const moodEffectMap: Record<string, string[]> = {
-      'relaxed': ['Relaxing', 'Calming', 'Peaceful'],
-      'energetic': ['Energetic', 'Uplifting', 'Active'],
-      'creative': ['Creative', 'Focused', 'Inspired'],
-      'focused': ['Focused', 'Clear-headed', 'Productive'],
-      'sleepy': ['Sleepy', 'Sedative', 'Restful'],
-      'happy': ['Happy', 'Euphoric', 'Giggly']
+      'relaxed': ['Relaxing', 'Calming', 'Peaceful', 'Relaxation', 'Stress Relief', 'Pain Relief'],
+      'energetic': ['Energetic', 'Uplifting', 'Active', 'Energy', 'Social Uplift'],
+      'creative': ['Creative', 'Inspired', 'Creativity', 'Euphoric'],
+      'focused': ['Focused', 'Clear-headed', 'Productive', 'Focus', 'Clear'],
+      'sleepy': ['Sleepy', 'Sedative', 'Restful', 'Sleep Aid', 'Relaxing'],
+      'happy': ['Happy', 'Euphoric', 'Giggly', 'Euphoria', 'Uplifting']
     };
     
-    const desiredEffects = moodEffectMap[preferences.mood.toLowerCase()] || [];
+    // Add secondary effect mappings (strains with these effects may partially satisfy the mood)
+    const secondaryMoodEffects: Record<string, string[]> = {
+      'relaxed': ['Happy', 'Pain Relief'],
+      'energetic': ['Happy', 'Euphoric', 'Focus'],
+      'creative': ['Happy', 'Uplifting', 'Energetic'],
+      'focused': ['Uplifting', 'Energy', 'Creativity'],
+      'sleepy': ['Pain Relief', 'Calming'],
+      'happy': ['Relaxing', 'Creative', 'Social Uplift']
+    };
     
-    if (desiredEffects.length > 0) {
-      filteredStrains = filteredStrains.filter(strain => 
+    // Only filter by mood if a mood is selected
+    if (preferences.mood && preferences.mood.toLowerCase() !== '') {
+      const primaryDesiredEffects = moodEffectMap[preferences.mood.toLowerCase()] || [];
+      const secondaryDesiredEffects = secondaryMoodEffects[preferences.mood.toLowerCase()] || [];
+      
+      // First, try to match with primary effects
+      let primaryMatches = filteredStrains.filter(strain => 
         strain.effects.some(effect => 
-          desiredEffects.some(desiredEffect => 
+          primaryDesiredEffects.some(desiredEffect => 
             effect.toLowerCase().includes(desiredEffect.toLowerCase())
           )
         )
       );
+      
+      // If we have enough primary matches, use those
+      if (primaryMatches.length >= 3) {
+        filteredStrains = primaryMatches;
+      } 
+      // Otherwise, include secondary matches as well
+      else {
+        filteredStrains = filteredStrains.filter(strain => 
+          strain.effects.some(effect => 
+            primaryDesiredEffects.concat(secondaryDesiredEffects).some(desiredEffect => 
+              effect.toLowerCase().includes(desiredEffect.toLowerCase())
+            )
+          )
+        );
+      }
+      
+      // If still no matches, return a few default strains instead of nothing
+      if (filteredStrains.length === 0) {
+        console.log(`No strains match the mood: ${preferences.mood}. Using a default selection.`);
+        filteredStrains = strains.slice(0, 4);
+      }
     }
     
     // Filter by additional effects if specified
