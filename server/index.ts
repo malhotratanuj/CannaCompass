@@ -42,6 +42,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Try to start the store finder service
+  try {
+    await startStoreFinderService();
+    console.log("Store finder service started successfully");
+  } catch (error) {
+    console.error("Failed to start store finder service:", error);
+    console.log("Will use fallback static data for store finder");
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

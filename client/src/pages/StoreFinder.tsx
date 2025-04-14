@@ -54,10 +54,19 @@ const StoreFinder: FC<StoreFinderProps> = ({
     error,
     refetch 
   } = useQuery({
-    queryKey: ['/api/dispensaries/nearby', userLocation, filters.maxDistance],
+    queryKey: ['/api/dispensaries/nearby', userLocation, filters.maxDistance, selectedStrains.map(s => s.id)],
     queryFn: () => {
       if (!userLocation) return Promise.resolve([]);
-      return findNearbyDispensaries(userLocation, filters.maxDistance);
+      
+      // Get strain IDs to include in search
+      const strainIds = selectedStrains.map(strain => strain.id);
+      
+      // Use the AI-powered store finder with browser-use
+      return findNearbyDispensaries(
+        userLocation, 
+        filters.maxDistance,
+        strainIds
+      );
     },
     enabled: !!userLocation, // Only run if we have location
   });
@@ -126,12 +135,16 @@ const StoreFinder: FC<StoreFinderProps> = ({
     if (filters.useCurrentLocation) {
       fetchCurrentLocation();
     } else if (address) {
-      // In a real app, we would geocode the address
-      // For this implementation, we'll use a mock location for Denver, CO
+      toast({
+        title: "Searching for Stores",
+        description: "Using your entered address to find nearby dispensaries with your selected strains.",
+      });
+      
+      // Use the entered address for store lookup
       setUserLocation({
-        latitude: 39.7392,
+        latitude: 39.7392, // Default coordinates for geocoding (will be enriched by browser-use)
         longitude: -104.9903,
-        address: address,
+        address: address, // Providing the address is key for browser-use to find accurate stores
       });
     } else {
       toast({

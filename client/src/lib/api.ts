@@ -21,9 +21,24 @@ export async function getAllStrains(): Promise<Strain[]> {
 
 export async function findNearbyDispensaries(
   location: UserLocation, 
-  radius: number = 10
+  radius: number = 10,
+  strainIds: string[] = []
 ): Promise<Dispensary[]> {
   const response = await apiRequest("POST", "/api/dispensaries/nearby", {
+    ...location,
+    radius,
+    strainIds,
+  });
+  const data = await response.json();
+  return data.dispensaries;
+}
+
+// Function to find nearby dispensaries using static data (fallback)
+export async function findNearbyDispensariesStatic(
+  location: UserLocation, 
+  radius: number = 10
+): Promise<Dispensary[]> {
+  const response = await apiRequest("POST", "/api/dispensaries/static", {
     ...location,
     radius,
   });

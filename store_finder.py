@@ -113,7 +113,7 @@ async def find_stores(request: LocationRequest):
         """
         
         # Initialize browser and agent
-        browser = Browser(headless=True)
+        browser = Browser()  # headless=True is no longer supported in newer versions
         agent = Agent(
             task=task,
             llm=ChatOpenAI(model="gpt-4o"),
