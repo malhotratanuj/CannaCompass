@@ -24,13 +24,26 @@ export async function findNearbyDispensaries(
   radius: number = 10,
   strainIds: string[] = []
 ): Promise<Dispensary[]> {
-  const response = await apiRequest("POST", "/api/dispensaries/nearby", {
-    ...location,
-    radius,
-    strainIds,
-  });
-  const data = await response.json();
-  return data.dispensaries;
+  console.log('Making API call to findNearbyDispensaries:', { location, radius, strainIds });
+  try {
+    const response = await apiRequest("POST", "/api/dispensaries/nearby", {
+      ...location,
+      radius,
+      strainIds,
+    });
+    const data = await response.json();
+    console.log('API response received:', data);
+    
+    if (!data.dispensaries || !Array.isArray(data.dispensaries)) {
+      console.error('Invalid response format, dispensaries is not an array:', data);
+      return [];
+    }
+    
+    return data.dispensaries;
+  } catch (error) {
+    console.error('Error in findNearbyDispensaries:', error);
+    throw error;
+  }
 }
 
 // Function to find nearby dispensaries using static data (fallback)
@@ -82,21 +95,37 @@ export async function getSavedStrains(): Promise<string[]> {
 
 // Helper function to get user's current location
 export function getCurrentLocation(): Promise<UserLocation> {
+  console.log('Getting current location from browser...');
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
+      console.error('Geolocation is not supported by this browser');
       reject(new Error("Geolocation is not supported by your browser"));
       return;
     }
     
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        resolve({
+        const location = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-        });
+        };
+        console.log('Successfully obtained location:', location);
+        resolve(location);
       },
       (error) => {
-        reject(error);
+        console.error('Error getting geolocation:', error);
+        // Fall back to a default location to keep the app working
+        console.log('Falling back to default Denver location');
+        resolve({
+          latitude: 39.7392,
+          longitude: -104.9903,
+          address: "Denver, CO (Default location)"
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       }
     );
   });

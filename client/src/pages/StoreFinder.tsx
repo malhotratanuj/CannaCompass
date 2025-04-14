@@ -55,18 +55,29 @@ const StoreFinder: FC<StoreFinderProps> = ({
     refetch 
   } = useQuery({
     queryKey: ['/api/dispensaries/nearby', userLocation, filters.maxDistance, selectedStrains.map(s => s.id)],
-    queryFn: () => {
-      if (!userLocation) return Promise.resolve([]);
+    queryFn: async () => {
+      if (!userLocation) {
+        console.log('No userLocation provided, returning empty array');
+        return Promise.resolve([]);
+      }
       
       // Get strain IDs to include in search
       const strainIds = selectedStrains.map(strain => strain.id);
+      console.log('Making API request with:', { userLocation, maxDistance: filters.maxDistance, strainIds });
       
-      // Use the AI-powered store finder with browser-use
-      return findNearbyDispensaries(
-        userLocation, 
-        filters.maxDistance,
-        strainIds
-      );
+      try {
+        // Use the enhanced store finder with dynamic data
+        const result = await findNearbyDispensaries(
+          userLocation, 
+          filters.maxDistance,
+          strainIds
+        );
+        console.log('API returned dispensaries:', result);
+        return result;
+      } catch (err) {
+        console.error('Error fetching dispensaries:', err);
+        throw err;
+      }
     },
     enabled: !!userLocation, // Only run if we have location
   });
@@ -164,37 +175,59 @@ const StoreFinder: FC<StoreFinderProps> = ({
     // In a real app, you might want to fetch new data with the sorting parameter
   };
   
+  // Log dispensaries data to console for debugging
+  console.log('Dispensaries data received by component:', dispensaries);
+  
   // Filter dispensaries based on delivery options
   const filteredDispensaries = dispensaries ? dispensaries.filter(dispensary => {
+    if (!dispensary || !dispensary.amenities) {
+      console.error('Invalid dispensary object encountered:', dispensary);
+      return false;
+    }
+    
     if (filters.deliveryOption === 'both') return true;
     
-    const hasPickup = dispensary.amenities.some(a => a.includes('Pickup'));
-    const hasDelivery = dispensary.amenities.some(a => a.includes('Delivery'));
-    
-    if (filters.deliveryOption === 'pickup' && hasPickup) return true;
-    if (filters.deliveryOption === 'delivery' && hasDelivery) return true;
+    try {
+      const hasPickup = dispensary.amenities.some(a => a.includes('Pickup'));
+      const hasDelivery = dispensary.amenities.some(a => a.includes('Delivery'));
+      
+      if (filters.deliveryOption === 'pickup' && hasPickup) return true;
+      if (filters.deliveryOption === 'delivery' && hasDelivery) return true;
+    } catch (err) {
+      console.error('Error filtering dispensary:', err, dispensary);
+      return false;
+    }
     
     return false;
   }) : [];
   
+  console.log('Filtered dispensaries:', filteredDispensaries);
+  
   // Sort dispensaries based on selected option
   const sortedDispensaries = [...(filteredDispensaries || [])].sort((a, b) => {
-    switch (sortOption) {
-      case 'rating':
-        return b.rating - a.rating;
-      case 'price-low':
-        // For simplicity, sort by the first product's price
-        const aPrice = a.inventory[0]?.price || 0;
-        const bPrice = b.inventory[0]?.price || 0;
-        return aPrice - bPrice;
-      case 'price-high':
-        const aPriceHigh = a.inventory[0]?.price || 0;
-        const bPriceHigh = b.inventory[0]?.price || 0;
-        return bPriceHigh - aPriceHigh;
-      default: // 'distance'
-        return a.distance - b.distance;
+    try {
+      switch (sortOption) {
+        case 'rating':
+          return b.rating - a.rating;
+        case 'price-low':
+          // For simplicity, sort by the first product's price
+          const aPrice = a.inventory[0]?.price || 0;
+          const bPrice = b.inventory[0]?.price || 0;
+          return aPrice - bPrice;
+        case 'price-high':
+          const aPriceHigh = a.inventory[0]?.price || 0;
+          const bPriceHigh = b.inventory[0]?.price || 0;
+          return bPriceHigh - aPriceHigh;
+        default: // 'distance'
+          return a.distance - b.distance;
+      }
+    } catch (err) {
+      console.error('Error sorting dispensaries:', err);
+      return 0;
     }
   });
+  
+  console.log('Sorted dispensaries:', sortedDispensaries);
   
   // Determine if we're showing results
   const isShowingResults = !isLoading && !isError && userLocation && sortedDispensaries.length > 0;
