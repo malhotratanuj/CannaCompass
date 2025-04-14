@@ -1,118 +1,123 @@
+import { and, eq } from 'drizzle-orm';
 import { 
-  users, User, InsertUser, 
-  userPreferences, UserPreferences, InsertUserPreferences,
-  savedStrains, SavedStrain, InsertSavedStrain,
-  Strain, Dispensary, UserLocation, RecommendationRequest
-} from "@shared/schema";
-import { strains } from "./strainData";
-import { dispensaries } from "./dispensaryData";
+  User, InsertUser, 
+  UserPreferences, InsertUserPreferences, 
+  SavedStrain, Strain, Dispensary, UserLocation, RecommendationRequest,
+  users, userPreferences, savedStrains
+} from '@shared/schema';
+import { db } from './db';
+import { strains } from './strainData';
+import { dispensaries } from './dispensaryData';
+import { IStorage } from './storage';
 
-// Interface for storage operations
-export interface IStorage {
-  // User management
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  
-  // User preferences
-  getUserPreferences(userId: number): Promise<UserPreferences | undefined>;
-  saveUserPreferences(userId: number, preferences: InsertUserPreferences): Promise<UserPreferences>;
-  
-  // Saved strains
-  getSavedStrains(userId: number): Promise<SavedStrain[]>;
-  saveStrain(userId: number, strainId: string): Promise<SavedStrain>;
-  removeSavedStrain(userId: number, strainId: string): Promise<void>;
-  
-  // Recommendations
-  getStrainRecommendations(preferences: RecommendationRequest): Promise<Strain[]>;
-  getStrainById(strainId: string): Promise<Strain | undefined>;
-  getAllStrains(): Promise<Strain[]>;
-  
-  // Dispensary finder
-  findNearbyDispensaries(location: UserLocation, radius: number): Promise<Dispensary[]>;
-  getDispensaryById(dispensaryId: string): Promise<Dispensary | undefined>;
-}
-
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private userPreferencesMap: Map<number, UserPreferences>;
-  private savedStrainsMap: Map<number, SavedStrain[]>;
-  currentId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.userPreferencesMap = new Map();
-    this.savedStrainsMap = new Map();
-    this.currentId = 1;
-  }
-
+export class DatabaseStorage implements IStorage {
   // User management
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
-
+  
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
-
+  
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
-
+  
   // User preferences
   async getUserPreferences(userId: number): Promise<UserPreferences | undefined> {
-    return this.userPreferencesMap.get(userId);
+    const [preferences] = await db
+      .select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId));
+    
+    return preferences || undefined;
   }
-
+  
   async saveUserPreferences(userId: number, preferences: InsertUserPreferences): Promise<UserPreferences> {
-    const id = this.currentId++;
-    // Ensure all fields have appropriate values to match UserPreferences type
-    const userPreference: UserPreferences = {
-      id,
-      userId,
-      mood: preferences.mood || null,
-      experienceLevel: preferences.experienceLevel || null,
-      effects: preferences.effects || null,
-      flavors: preferences.flavors || null,
-      consumptionMethod: preferences.consumptionMethod || null
-    };
-    this.userPreferencesMap.set(userId, userPreference);
-    return userPreference;
+    // First check if user already has preferences
+    const existingPrefs = await this.getUserPreferences(userId);
+    
+    if (existingPrefs) {
+      // Update existing preferences
+      const [updated] = await db
+        .update(userPreferences)
+        .set({
+          mood: preferences.mood || null,
+          experienceLevel: preferences.experienceLevel || null,
+          effects: preferences.effects || null,
+          flavors: preferences.flavors || null,
+          consumptionMethod: preferences.consumptionMethod || null
+        })
+        .where(eq(userPreferences.id, existingPrefs.id))
+        .returning();
+      
+      return updated;
+    } else {
+      // Create new preferences
+      const [created] = await db
+        .insert(userPreferences)
+        .values({
+          userId,
+          mood: preferences.mood || null,
+          experienceLevel: preferences.experienceLevel || null,
+          effects: preferences.effects || null,
+          flavors: preferences.flavors || null,
+          consumptionMethod: preferences.consumptionMethod || null
+        })
+        .returning();
+      
+      return created;
+    }
   }
-
+  
   // Saved strains
   async getSavedStrains(userId: number): Promise<SavedStrain[]> {
-    return this.savedStrainsMap.get(userId) || [];
+    return db
+      .select()
+      .from(savedStrains)
+      .where(eq(savedStrains.userId, userId));
   }
-
+  
   async saveStrain(userId: number, strainId: string): Promise<SavedStrain> {
-    const id = this.currentId++;
-    const savedStrain: SavedStrain = { 
-      id, 
-      userId, 
-      strainId, 
-      savedAt: new Date().toISOString() 
-    };
+    // Check if already saved
+    const [existingSaved] = await db
+      .select()
+      .from(savedStrains)
+      .where(and(
+        eq(savedStrains.userId, userId),
+        eq(savedStrains.strainId, strainId)
+      ));
     
-    const userSavedStrains = this.savedStrainsMap.get(userId) || [];
-    userSavedStrains.push(savedStrain);
-    this.savedStrainsMap.set(userId, userSavedStrains);
+    if (existingSaved) {
+      return existingSaved;
+    }
     
-    return savedStrain;
+    const [saved] = await db
+      .insert(savedStrains)
+      .values({
+        userId,
+        strainId,
+        savedAt: new Date().toISOString()
+      })
+      .returning();
+    
+    return saved;
   }
-
+  
   async removeSavedStrain(userId: number, strainId: string): Promise<void> {
-    const userSavedStrains = this.savedStrainsMap.get(userId) || [];
-    const updatedStrains = userSavedStrains.filter(strain => strain.strainId !== strainId);
-    this.savedStrainsMap.set(userId, updatedStrains);
+    await db
+      .delete(savedStrains)
+      .where(and(
+        eq(savedStrains.userId, userId),
+        eq(savedStrains.strainId, strainId)
+      ));
   }
-
-  // Strain recommendations
+  
+  // Strain recommendations - using the same algorithm from MemStorage
   async getStrainRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
     // Enhanced recommendation algorithm based on mood and filters
     let filteredStrains = strains;
@@ -213,21 +218,19 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.rating - a.rating)
       .slice(0, 6); // Return top 6 recommendations
   }
-
+  
   async getStrainById(strainId: string): Promise<Strain | undefined> {
     return strains.find(strain => strain.id === strainId);
   }
-
+  
   async getAllStrains(): Promise<Strain[]> {
     return strains;
   }
-
-  // Dispensary finder
+  
+  // Dispensary finder - using the same algorithm from MemStorage
   async findNearbyDispensaries(location: UserLocation, radius: number): Promise<Dispensary[]> {
     // Simple implementation that calculates distances between user location and dispensaries
-    // In a real app, this would use a more sophisticated geospatial search
-    
-    const nearbyDispensaries = dispensaries.map(dispensary => {
+    const nearbyDispensaries = dispensaries.map((dispensary: Dispensary) => {
       // Calculate distance using Haversine formula
       const distance = this.calculateDistance(
         location.latitude, 
@@ -244,14 +247,14 @@ export class MemStorage implements IStorage {
     
     // Filter by radius and sort by distance
     return nearbyDispensaries
-      .filter(dispensary => dispensary.distance <= radius)
-      .sort((a, b) => a.distance - b.distance);
+      .filter((dispensary: Dispensary) => dispensary.distance <= radius)
+      .sort((a: Dispensary, b: Dispensary) => a.distance - b.distance);
   }
-
+  
   async getDispensaryById(dispensaryId: string): Promise<Dispensary | undefined> {
-    return dispensaries.find(dispensary => dispensary.id === dispensaryId);
+    return dispensaries.find((dispensary: Dispensary) => dispensary.id === dispensaryId);
   }
-
+  
   // Helper method to calculate distance between two coordinates in miles
   private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 3958.8; // Earth's radius in miles
@@ -265,13 +268,8 @@ export class MemStorage implements IStorage {
     const distance = R * c;
     return distance;
   }
-
+  
   private toRadians(degrees: number): number {
     return degrees * Math.PI / 180;
   }
 }
-
-import { DatabaseStorage } from './databaseStorage';
-
-// Use the database storage implementation
-export const storage = new DatabaseStorage();
