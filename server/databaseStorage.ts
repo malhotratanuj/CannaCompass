@@ -120,6 +120,8 @@ export class DatabaseStorage implements IStorage {
   // Strain recommendations - using the same algorithm from MemStorage
   async getStrainRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
     // Enhanced recommendation algorithm based on mood and filters
+    console.log("Strain data length:", strains.length);
+    console.log("Preferences received:", JSON.stringify(preferences));
     let filteredStrains = strains;
     
     // Filter by mood with expanded effect mappings to catch more strains

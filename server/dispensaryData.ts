@@ -1,5 +1,8 @@
 import { Dispensary } from "@shared/schema";
 
+// Log to ensure this file is being loaded
+console.log("Loading dispensary data...");
+
 export const dispensaries: Dispensary[] = [
   {
     id: "disp1",

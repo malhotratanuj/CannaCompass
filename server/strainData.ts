@@ -1,5 +1,8 @@
 import { Strain } from "@shared/schema";
 
+// Log to ensure this file is being loaded
+console.log("Loading strain data...");
+
 export const strains: Strain[] = [
   {
     id: "gdp1",
