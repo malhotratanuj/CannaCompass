@@ -30,32 +30,32 @@ export async function findNearbyDispensaries(
     // This simulates what browser-use would do but without requiring the external service
     const cityName = location.address ? extractCity(location.address) : 'Denver';
     
-    // Generate store names based on location that sound authentic
-    // Different names for Canadian cities vs US cities
-    const isCanadianCity = ['Vancouver', 'Toronto', 'Montreal'].includes(cityName);
+    // Generate authentic Canadian dispensary names
+    // For MVP, we're focusing exclusively on Canadian stores
+    const bcBased = cityName === 'Vancouver' || cityName === 'Victoria' || cityName === 'Surrey' || 
+                  cityName === 'Burnaby' || cityName === 'Richmond' || cityName === 'Kelowna';
+                  
+    const quebecBased = cityName === 'Montreal' || cityName === 'Quebec City' || cityName === 'Laval';
     
-    const realStoreNames = isCanadianCity ? [
+    // Generate store names with regional variations
+    const realStoreNames = [
+      // Common Canadian names
       `${cityName} Cannabis`,
       `True North Dispensary`,
-      `Maple Leaf Greens`,
+      
+      // BC specific names (if in BC)
+      bcBased ? 'BC Buds & Beyond' : 'Canadian Bloom',
+      bcBased ? 'Evergreen Cannabis Society' : 'The Herbary',
+      
+      // Quebec specific names (if in Quebec)
+      quebecBased ? 'La Société Québécoise du Cannabis' : 'Maple Leaf Greens',
+      quebecBased ? 'Vert Cannabis' : 'Northern Lights Cannabis',
+      
+      // Common across Canada
       `${cityName} Compassion Club`,
-      `Northern Lights Cannabis`,
-      `BC Buds & Beyond`,
-      `Canadian Bloom`,
-      `The Cannabis Shoppe`,
+      'The Cannabis Shoppe',
       `${cityName} Medicinals`,
-      `Canuck Cannabis Co.`
-    ] : [
-      `${cityName} Dispensary`,
-      `Green Leaf ${cityName}`,
-      `The Cannabis Station`,
-      `${cityName} Greens`,
-      `Mile High Dispensary`,
-      `Nature's Medicine`,
-      `Rocky Mountain High`,
-      `Pure Cannabis Co.`,
-      `The Healing Center`,
-      `Cloud 9 Dispensary`
+      'Canuck Cannabis Co.'
     ];
     
     // Generate addresses that match the provided location
@@ -146,67 +146,174 @@ export async function findNearbyDispensaries(
 
 // Helper function to extract city from address
 function extractCity(address: string): string {
-  // First check if it's a postal code pattern (like V4N 5Z6)
-  if (/^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/i.test(address.trim())) {
+  // Clean up the address
+  const cleanAddress = address.trim().toUpperCase();
+  
+  // First check if it's a Canadian postal code pattern (like V4N 5Z6)
+  // Format: A1A 1A1 (letter-number-letter space/dash/nothing number-letter-number)
+  if (/^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/i.test(cleanAddress)) {
     // Canadian postal code format detected
-    return 'Vancouver';
-  }
-  
-  // U.S. zip code pattern
-  if (/^\d{5}(-\d{4})?$/.test(address.trim())) {
-    // Assign a city based on first digit of zip code
-    const firstDigit = address.trim()[0];
-    const zipCities: { [key: string]: string } = {
-      '0': 'Boston',
-      '1': 'New York',
-      '2': 'Washington DC',
-      '3': 'Miami',
-      '4': 'Atlanta',
-      '5': 'Chicago',
-      '6': 'Dallas',
-      '7': 'Houston',
-      '8': 'Denver',
-      '9': 'Los Angeles'
+    // Map postal code prefixes to cities
+    const firstLetter = cleanAddress[0];
+    
+    const postalCityMap: { [key: string]: string } = {
+      'V': 'Vancouver', // British Columbia
+      'T': 'Calgary',   // Alberta
+      'K': 'Ottawa',    // Ontario (partial)
+      'M': 'Toronto',   // Ontario (Toronto)
+      'H': 'Montreal',  // Quebec (Montreal)
+      'J': 'Montreal',  // Quebec (surrounding)
+      'G': 'Quebec City', // Quebec
+      'B': 'Halifax',   // Nova Scotia
+      'E': 'Moncton',   // New Brunswick
+      'R': 'Winnipeg',  // Manitoba
+      'S': 'Saskatoon', // Saskatchewan
+      'A': 'St. John\'s', // Newfoundland and Labrador
+      'Y': 'Whitehorse', // Yukon
+      'X': 'Yellowknife', // Northwest Territories
+      'C': 'Prince Edward Island'
     };
-    return zipCities[firstDigit] || 'Denver';
+    
+    return postalCityMap[firstLetter] || 'Vancouver'; // Default to Vancouver
   }
   
-  // Check if address contains common city names
-  const commonCities = ['Denver', 'Boulder', 'Seattle', 'Portland', 'Los Angeles', 'San Francisco', 
-                        'Chicago', 'Boston', 'New York', 'Vancouver', 'Toronto', 'Montreal'];
+  // For any input that looks like a Canadian address (contains province code)
+  const canadianProvinces = ['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU'];
+  const words = cleanAddress.split(/\s+|,/);
+  for (const province of canadianProvinces) {
+    if (words.includes(province)) {
+      // If we find a province code, look for a city before it
+      const provinceIndex = words.indexOf(province);
+      if (provinceIndex > 0) {
+        // Try to find a city name from our list that matches
+        const canadianCities = ['VANCOUVER', 'TORONTO', 'MONTREAL', 'CALGARY', 'OTTAWA', 'EDMONTON', 
+                             'MISSISSAUGA', 'WINNIPEG', 'QUEBEC', 'HAMILTON', 'BRAMPTON', 'SURREY', 
+                             'KITCHENER', 'LAVAL', 'HALIFAX', 'VICTORIA'];
+        
+        for (let i = 0; i < provinceIndex; i++) {
+          if (canadianCities.includes(words[i])) {
+            return words[i].charAt(0) + words[i].slice(1).toLowerCase(); // Proper case
+          }
+        }
+        
+        // If we can't find a matching city, use the word before the province
+        return words[provinceIndex - 1].charAt(0) + words[provinceIndex - 1].slice(1).toLowerCase();
+      }
+      
+      // If province is found but no city, return a default city for that province
+      const provinceToDefaultCity: { [key: string]: string } = {
+        'BC': 'Vancouver',
+        'AB': 'Calgary',
+        'SK': 'Saskatoon',
+        'MB': 'Winnipeg',
+        'ON': 'Toronto',
+        'QC': 'Montreal',
+        'NB': 'Moncton',
+        'NS': 'Halifax',
+        'PE': 'Charlottetown',
+        'NL': 'St. John\'s',
+        'YT': 'Whitehorse',
+        'NT': 'Yellowknife',
+        'NU': 'Iqaluit'
+      };
+      return provinceToDefaultCity[province] || 'Vancouver';
+    }
+  }
+  
+  // Check if address contains common Canadian city names
+  const commonCities = ['Vancouver', 'Toronto', 'Montreal', 'Calgary', 'Ottawa', 'Edmonton',
+                      'Winnipeg', 'Quebec', 'Hamilton', 'Victoria', 'Halifax', 'London'];
   for (const city of commonCities) {
-    if (address.includes(city)) {
+    if (cleanAddress.includes(city.toUpperCase())) {
       return city;
     }
   }
   
-  // Split on commas and look for state codes
-  const parts = address.split(',').map(p => p.trim());
+  // Split on commas and check structure
+  const parts = cleanAddress.split(',').map(p => p.trim());
   if (parts.length >= 2) {
-    // If we have something like "City, State", return the city part
-    if (parts[1].length === 2 || parts[1].includes(' ')) {
-      return parts[0];
-    }
+    // If we have something like "City, Province", return the city part
+    return parts[0].charAt(0) + parts[0].slice(1).toLowerCase();
   }
   
-  // If we can't determine a specific location, use the address itself as the city name
-  // This ensures every address gets its own unique stores
-  if (address.length > 0) {
-    return address.split(' ')[0]; // Use the first word of the address
-  }
-  
-  // Default to Denver if we can't extract anything
-  return 'Denver';
+  // If we can't determine a specific location, treat as Vancouver
+  // Since we're focusing on Canada for MVP
+  return 'Vancouver';
 }
 
 // Helper function to generate realistic addresses
 function generateAddresses(city: string, count: number): string[] {
-  const streets = [
-    'Main St', 'Broadway', 'Oak St', 'Pine Ave', 'Maple Rd',
-    'Washington Ave', 'Lincoln St', 'Park Ave', 'Cedar Ln', 'Highland Dr'
+  // Define Canadian street names
+  const canadianStreets = [
+    'Maple St', 'Queen St', 'King St', 'Yonge St', 'Robson St',
+    'Granville St', 'Denman St', 'Davie St', 'Broadway', 'Hastings St',
+    'Commercial Dr', 'Main St', 'Burrard St', 'Bloor St', 'Dundas St',
+    'St Catherine St', 'Rue Sainte-Catherine', 'Avenue du Mont-Royal', 'Boulevard Saint-Laurent',
+    'Elgin St', 'Bank St', 'Rideau St', 'Wellington St', 'Portage Ave',
+    'Jasper Ave', '17th Ave', 'Stephen Ave', 'Whyte Ave', 'Water St'
   ];
   
+  // US street names for fallback
+  const usStreets = [
+    'Main St', 'Broadway', 'Oak St', 'Pine Ave', 'Washington Ave',
+    'Lincoln St', 'Park Ave', 'Cedar Ln', 'Highland Dr', 'First St'
+  ];
+  
+  // Use the right street names based on whether it's a Canadian city
+  const isCanadianCity = ['Vancouver', 'Toronto', 'Montreal', 'Ottawa', 'Calgary',
+                          'Edmonton', 'Winnipeg', 'Quebec City', 'Hamilton', 'Victoria', 
+                          'Halifax', 'London', 'Saskatoon', 'Regina', 'St. John\'s', 
+                          'Moncton', 'Fredericton', 'Charlottetown', 'Whitehorse', 
+                          'Yellowknife', 'Iqaluit'].includes(city);
+  
+  const streets = isCanadianCity ? canadianStreets : usStreets;
+  
+  // Define provinces/states with their abbreviations
   const states: {[key: string]: string} = {
+    // Canadian provinces
+    'Vancouver': 'BC',
+    'Victoria': 'BC',
+    'Surrey': 'BC',
+    'Richmond': 'BC',
+    'Burnaby': 'BC',
+    'Kelowna': 'BC',
+    'Abbotsford': 'BC',
+    'Nanaimo': 'BC',
+    'Calgary': 'AB',
+    'Edmonton': 'AB',
+    'Red Deer': 'AB',
+    'Lethbridge': 'AB',
+    'Regina': 'SK',
+    'Saskatoon': 'SK',
+    'Winnipeg': 'MB',
+    'Toronto': 'ON',
+    'Ottawa': 'ON',
+    'Mississauga': 'ON',
+    'Hamilton': 'ON',
+    'London': 'ON',
+    'Kitchener': 'ON',
+    'Windsor': 'ON',
+    'Brampton': 'ON',
+    'Markham': 'ON',
+    'Vaughan': 'ON',
+    'Montreal': 'QC',
+    'Quebec City': 'QC',
+    'Laval': 'QC',
+    'Gatineau': 'QC',
+    'Longueuil': 'QC',
+    'Sherbrooke': 'QC',
+    'Fredericton': 'NB',
+    'Moncton': 'NB',
+    'Saint John': 'NB',
+    'Halifax': 'NS',
+    'Sydney': 'NS',
+    'Charlottetown': 'PE',
+    'St. John\'s': 'NL',
+    'Whitehorse': 'YT',
+    'Yellowknife': 'NT',
+    'Iqaluit': 'NU',
+    
+    // US states (for fallback)
     'Denver': 'CO',
     'Boulder': 'CO',
     'Seattle': 'WA',
@@ -216,9 +323,6 @@ function generateAddresses(city: string, count: number): string[] {
     'Chicago': 'IL',
     'Boston': 'MA',
     'New York': 'NY',
-    'Vancouver': 'BC',
-    'Toronto': 'ON',
-    'Montreal': 'QC',
     'Washington DC': 'DC',
     'Miami': 'FL',
     'Atlanta': 'GA',
@@ -226,34 +330,59 @@ function generateAddresses(city: string, count: number): string[] {
     'Houston': 'TX'
   };
   
-  const zipCodes: {[key: string]: string[]} = {
+  // Define postal codes per city
+  const postalCodes: {[key: string]: string[]} = {
+    // British Columbia
+    'Vancouver': ['V5K 0A1', 'V5L 1A1', 'V5N 1Z6', 'V6B 1A1', 'V6E 1M3'],
+    'Victoria': ['V8V 1Z9', 'V8W 1N5', 'V8W 2H9', 'V8X 1W2', 'V8Z 3H5'],
+    'Surrey': ['V3R 1C2', 'V3S 4N8', 'V3T 1V5', 'V3V 1H8', 'V3W 3L5'],
+    'Burnaby': ['V5A 1S6', 'V5B 3A7', 'V5C 2J7', 'V5E 1Z4', 'V5G 3T4'],
+    'Richmond': ['V6X 1X7', 'V6Y 2B3', 'V7A 1N2', 'V7C 1B7', 'V7E 1G3'],
+    
+    // Alberta
+    'Calgary': ['T2E 8M4', 'T2P 5H7', 'T2R 0S5', 'T3A 2G4', 'T3H 3C7'],
+    'Edmonton': ['T5H 3Y7', 'T5J 1Z7', 'T5K 2J5', 'T5T 1A3', 'T6E 5T2'],
+    
+    // Saskatchewan
+    'Regina': ['S4P 3Y2', 'S4R 2N4', 'S4S 5W4', 'S4T 3C2', 'S4V 0L4'],
+    'Saskatoon': ['S7H 0S5', 'S7J 2G4', 'S7K 3H8', 'S7L 4V3', 'S7N 2Z8'],
+    
+    // Manitoba
+    'Winnipeg': ['R2C 3T4', 'R2G 4B2', 'R2H 0C6', 'R3B 2E9', 'R3C 0L5'],
+    
+    // Ontario
+    'Toronto': ['M4W 1A5', 'M5G 1Z8', 'M5H 2N2', 'M5J 2H7', 'M5V 2A8'],
+    'Ottawa': ['K1A 0A9', 'K1P 5G8', 'K1Y 4W3', 'K2P 0X8', 'K2S 1E9'],
+    'Mississauga': ['L4T 1Y8', 'L4W 4Y4', 'L4Z 1S2', 'L5A 1W1', 'L5B 3C2'],
+    'Hamilton': ['L8E 1K7', 'L8H 2Y9', 'L8L 3Z9', 'L8N 1B5', 'L8P 1A2'],
+    
+    // Quebec
+    'Montreal': ['H2L 2E7', 'H2Y 1C6', 'H2Z 1A4', 'H3B 2Y3', 'H3C 5H7'],
+    'Quebec City': ['G1K 3Y3', 'G1R 4P5', 'G1V 2M2', 'G2B 1L3', 'G2E 5S5'],
+    'Laval': ['H7G 4L2', 'H7K 3N5', 'H7P 5V3', 'H7S 1B6', 'H7T 2Y8'],
+    
+    // Nova Scotia
+    'Halifax': ['B3H 1V9', 'B3J 3N2', 'B3K 4Y2', 'B3L 1H8', 'B3M 3A9'],
+    
+    // New Brunswick
+    'Moncton': ['E1A 5L2', 'E1C 1B9', 'E1E 4W3', 'E1G 2G8', 'E1H 2L6'],
+    'Saint John': ['E2K 1J5', 'E2L 2X1', 'E2M 4Z7', 'E2P 1A3', 'E2S 2C5'],
+    
+    // US Cities (for fallback)
     'Denver': ['80201', '80202', '80203', '80204', '80205'],
-    'Boulder': ['80301', '80302', '80303', '80304', '80305'],
     'Seattle': ['98101', '98102', '98103', '98104', '98105'],
-    'Portland': ['97201', '97202', '97203', '97204', '97205'],
-    'Los Angeles': ['90001', '90002', '90003', '90004', '90005'],
-    'San Francisco': ['94101', '94102', '94103', '94104', '94105'],
-    'Chicago': ['60601', '60602', '60603', '60604', '60605'],
-    'Boston': ['02108', '02109', '02110', '02111', '02112'],
     'New York': ['10001', '10002', '10003', '10004', '10005'],
-    'Vancouver': ['V5K 0A1', 'V5L 1A1', 'V5N 1Z6', 'V4N 5Z6', 'V6B 1A1'],
-    'Toronto': ['M5V 2A8', 'M5H 2N2', 'M4W 1A5', 'M5J 2H7', 'M5G 1Z8'],
-    'Montreal': ['H2Y 1C6', 'H3B 2Y3', 'H2Z 1A4', 'H3C 5H7', 'H2L 2E7'],
-    'Washington DC': ['20001', '20002', '20003', '20004', '20005'],
-    'Miami': ['33101', '33102', '33103', '33104', '33105'],
-    'Atlanta': ['30301', '30302', '30303', '30304', '30305'],
-    'Dallas': ['75201', '75202', '75203', '75204', '75205'],
-    'Houston': ['77001', '77002', '77003', '77004', '77005']
   };
   
-  const state = states[city] || 'CO';
-  const availableZipCodes = zipCodes[city] || zipCodes['Denver'];
+  // Default to Vancouver if city is not in our database
+  const state = states[city] || 'BC';
+  const availablePostalCodes = postalCodes[city] || postalCodes['Vancouver'];
   
   return Array.from({ length: count }, (_, i) => {
     const streetNum = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
     const street = streets[i % streets.length];
-    const zipCode = availableZipCodes[i % availableZipCodes.length];
-    return `${streetNum} ${street}, ${city}, ${state} ${zipCode}`;
+    const postalCode = availablePostalCodes[i % availablePostalCodes.length];
+    return `${streetNum} ${street}, ${city}, ${state} ${postalCode}`;
   });
 }
 
