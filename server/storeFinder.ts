@@ -141,18 +141,31 @@ export async function findNearbyDispensaries(
     // If we get here, the browser-use service is not available or failed
     // So we use our static data approach instead
     
-    // Special handling for M6C postal code
+    // Special handling for M6C postal code (St. Clair West area in Toronto)
     if (location.address && location.address.toUpperCase().includes('M6C')) {
-      // This is St. Clair West in Toronto - use our specific On High Cannabis data
+      // This is St. Clair West in Toronto - use our specific St. Clair West dispensary data
       console.log("Using specific St. Clair West Toronto dispensary data");
-      return staticDispensaries
-        .filter(d => d.name === "On High Cannabis" || d.address.includes("St Clair"))
-        .slice(0, 5)
-        .map((d, index) => ({
-          ...d,
-          distance: 0.1 + (index * 0.8) // Make On High Cannabis the closest
-        }))
-        .sort((a, b) => a.distance - b.distance);
+      
+      // Get our special St. Clair dispensaries list from global
+      const stClairDispensaries = (global as any).stClairDispensaries || [];
+      
+      if (stClairDispensaries.length > 0) {
+        console.log(`Found ${stClairDispensaries.length} specific dispensaries for St. Clair West area`);
+        return stClairDispensaries
+          .filter((d: Dispensary) => d.distance <= radius)
+          .sort((a: Dispensary, b: Dispensary) => a.distance - b.distance);
+      } else {
+        // Fallback to searching for "On High Cannabis" in our static data
+        console.log("No specific St. Clair data found, searching in static data");
+        return staticDispensaries
+          .filter(d => d.name === "On High Cannabis" || d.address.includes("St Clair"))
+          .slice(0, 5)
+          .map((d, index) => ({
+            ...d,
+            distance: 0.1 + (index * 0.8) // Make On High Cannabis the closest
+          }))
+          .sort((a, b) => a.distance - b.distance);
+      }
     }
     
     // Generate dynamic data based on the location

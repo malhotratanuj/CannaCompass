@@ -146,6 +146,117 @@ const torontoStClairDispensaries: Dispensary[] = [
   }
 ];
 
+// Special dispensaries for the St. Clair West area in Toronto (M6C postal code)
+const stClairDispensaries: Dispensary[] = [
+  {
+    id: "on-high-cannabis",
+    name: "On High Cannabis",
+    address: "806-A St Clair Ave West, Toronto, ON M6C 1B6",
+    rating: 4.7,
+    reviewCount: 132,
+    distance: 0.1, // Very close
+    openNow: true,
+    hours: "10AM - 10PM, 7 days a week",
+    amenities: [
+      "Delivery Available",
+      "In-Store Pickup",
+      "Online Ordering",
+      "Medical",
+      "Recreational"
+    ],
+    imageUrl: "https://images.unsplash.com/photo-1542281286-f93cd05310c6?w=800&auto=format&fit=crop",
+    inventory: [
+      {
+        strainId: "og1",
+        strainName: "OG Kush",
+        price: 36,
+        quantity: "3.5g",
+        inStock: true
+      },
+      {
+        strainId: "ss1",
+        strainName: "Sour Diesel",
+        price: 39,
+        quantity: "3.5g",
+        inStock: true
+      },
+      {
+        strainId: "gdp1",
+        strainName: "Granddaddy Purple",
+        price: 42,
+        quantity: "3.5g",
+        inStock: true
+      },
+      {
+        strainId: "bd1",
+        strainName: "Blue Dream",
+        price: 38,
+        quantity: "3.5g",
+        inStock: true
+      },
+      {
+        strainId: "pu1",
+        strainName: "Purple Urkle",
+        price: 41,
+        quantity: "3.5g",
+        inStock: true
+      }
+    ],
+    coordinates: {
+      lat: 43.6815,
+      lng: -79.4199
+    }
+  },
+  {
+    id: "tokyo-smoke",
+    name: "Tokyo Smoke",
+    address: "668 St Clair Ave W, Toronto, ON M6C 1B1",
+    rating: 4.2,
+    reviewCount: 87,
+    distance: 0.4,
+    openNow: true,
+    hours: "9AM - 9PM, 7 days a week",
+    amenities: [
+      "Delivery Available",
+      "In-Store Pickup",
+      "Online Ordering",
+      "Recreational"
+    ],
+    imageUrl: "https://images.unsplash.com/photo-1542281286-f93cd05310c6?w=800&auto=format&fit=crop",
+    inventory: [
+      {
+        strainId: "og1",
+        strainName: "OG Kush",
+        price: 35,
+        quantity: "3.5g",
+        inStock: true
+      },
+      {
+        strainId: "ss1",
+        strainName: "Sour Diesel",
+        price: 37,
+        quantity: "3.5g",
+        inStock: false
+      },
+      {
+        strainId: "bd1",
+        strainName: "Blue Dream",
+        price: 36,
+        quantity: "3.5g",
+        inStock: true
+      }
+    ],
+    coordinates: {
+      lat: 43.682,
+      lng: -79.425
+    }
+  }
+];
+
+// Make these available as a global variable so they can be accessed in storeFinder.ts
+(global as any).stClairDispensaries = stClairDispensaries;
+
+// Main dispensary data for other locations
 export const dispensaries: Dispensary[] = [
   {
     id: "disp1",
