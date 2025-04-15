@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import ProgressBar from '@/components/ProgressBar';
 import StrainCard from '@/components/StrainCard';
 import { Button } from '@/components/ui/button';
+import TutorialTooltip from '@/components/TutorialTooltip';
+import { useTutorial } from '@/contexts/TutorialContext';
 import {
   Select,
   SelectContent,
@@ -96,7 +98,8 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
         sortedStrains.sort((a, b) => {
           const getMaxTHC = (thcStr: string) => {
             const match = thcStr.match(/(\d+)-(\d+)/);
-            return match ? parseInt(match[2]) : 0;
+            if (!match) return 0;
+            return parseInt(match[2]);
           };
           return getMaxTHC(b.thcContent) - getMaxTHC(a.thcContent);
         });
@@ -105,7 +108,8 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
         sortedStrains.sort((a, b) => {
           const getMinTHC = (thcStr: string) => {
             const match = thcStr.match(/(\d+)-(\d+)/);
-            return match ? parseInt(match[1]) : 0;
+            if (!match) return 0;
+            return parseInt(match[1]);
           };
           return getMinTHC(a.thcContent) - getMinTHC(b.thcContent);
         });
@@ -114,7 +118,8 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
         sortedStrains.sort((a, b) => {
           const getMaxCBD = (cbdStr: string) => {
             const match = cbdStr.match(/(\d+\.?\d*)-?(\d+\.?\d*)?/);
-            return match && match[2] ? parseFloat(match[2]) : parseFloat(match[1]);
+            if (!match) return 0;
+            return match[2] ? parseFloat(match[2]) : parseFloat(match[1]);
           };
           return getMaxCBD(b.cbdContent) - getMaxCBD(a.cbdContent);
         });
@@ -184,16 +189,18 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
           </AlertDescription>
         </Alert>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {recommendedStrains.map((strain) => (
-            <StrainCard 
-              key={strain.id} 
-              strain={strain} 
-              selected={selectedStrains.some(s => s.id === strain.id)}
-              onSelect={onStrainSelect}
-              onViewDetails={handleViewDetails}
-            />
-          ))}
+        <div id="strain-recommendations" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <TutorialTooltip targetId="strain-recommendations" position="top">
+            {recommendedStrains.map((strain) => (
+              <StrainCard 
+                key={strain.id} 
+                strain={strain} 
+                selected={selectedStrains.some(s => s.id === strain.id)}
+                onSelect={onStrainSelect}
+                onViewDetails={handleViewDetails}
+              />
+            ))}
+          </TutorialTooltip>
         </div>
       )}
       
@@ -207,7 +214,7 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
         </Button>
         <Button
           onClick={handleNextStep}
-          className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out"
+          className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out animate-pulse-green"
         >
           Find Nearby Stores
         </Button>

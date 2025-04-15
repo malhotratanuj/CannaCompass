@@ -115,46 +115,50 @@ const EffectsPreferences: FC<EffectsPreferencesProps> = ({
         <p className="text-gray-600 mb-6">Adjust your preferences to get more personalized recommendations.</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold mb-4">Desired Effects</h3>
-            <div className="space-y-2">
-              {EFFECTS.map((effect) => (
-                <div key={effect} className="flex items-center">
-                  <button 
-                    onClick={() => toggleEffect(effect)}
-                    className="flex items-center focus:outline-none"
-                  >
-                    {selectedEffects.includes(effect) ? (
-                      <CheckCircle2 className="h-5 w-5 text-primary-600" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-gray-300" />
-                    )}
-                    <span className="ml-2 text-sm text-gray-700">{effect}</span>
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div id="effects-selection" className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <TutorialTooltip targetId="effects-selection" position="right">
+              <h3 className="text-lg font-semibold mb-4">Desired Effects</h3>
+              <div className="space-y-2">
+                {EFFECTS.map((effect) => (
+                  <div key={effect} className="flex items-center">
+                    <button 
+                      onClick={() => toggleEffect(effect)}
+                      className="flex items-center focus:outline-none"
+                    >
+                      {selectedEffects.includes(effect) ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-gray-300" />
+                      )}
+                      <span className="ml-2 text-sm text-gray-700">{effect}</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </TutorialTooltip>
           </div>
           
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold mb-4">Preferred Flavors</h3>
-            <div className="space-y-2">
-              {FLAVORS.map((flavor) => (
-                <div key={flavor} className="flex items-center">
-                  <button 
-                    onClick={() => toggleFlavor(flavor)}
-                    className="flex items-center focus:outline-none"
-                  >
-                    {selectedFlavors.includes(flavor) ? (
-                      <CheckCircle2 className="h-5 w-5 text-primary-600" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-gray-300" />
-                    )}
-                    <span className="ml-2 text-sm text-gray-700">{flavor}</span>
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div id="flavor-selection" className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <TutorialTooltip targetId="flavor-selection" position="left">
+              <h3 className="text-lg font-semibold mb-4">Preferred Flavors</h3>
+              <div className="space-y-2">
+                {FLAVORS.map((flavor) => (
+                  <div key={flavor} className="flex items-center">
+                    <button 
+                      onClick={() => toggleFlavor(flavor)}
+                      className="flex items-center focus:outline-none"
+                    >
+                      {selectedFlavors.includes(flavor) ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-gray-300" />
+                      )}
+                      <span className="ml-2 text-sm text-gray-700">{flavor}</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </TutorialTooltip>
           </div>
         </div>
         
@@ -168,7 +172,7 @@ const EffectsPreferences: FC<EffectsPreferencesProps> = ({
                   className="flex items-center focus:outline-none"
                 >
                   {selectedConsumptionMethods.includes(method) ? (
-                    <CheckCircle2 className="h-5 w-5 text-primary-600" />
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
                   ) : (
                     <Circle className="h-5 w-5 text-gray-300" />
                   )}
@@ -189,7 +193,7 @@ const EffectsPreferences: FC<EffectsPreferencesProps> = ({
           </Button>
           <Button
             onClick={handleNextStep}
-            className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out"
+            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out animate-pulse-green"
           >
             View Recommendations
           </Button>
