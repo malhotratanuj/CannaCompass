@@ -11,10 +11,13 @@ import { RecommendationRequest, Strain } from "@shared/schema";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PrivacyConsent from "@/components/PrivacyConsent";
+import WelcomeModal from "@/components/WelcomeModal";
+import { TutorialProvider } from "@/contexts/TutorialContext";
 
 function App() {
   const [location] = useLocation();
   const [showPrivacyConsent, setShowPrivacyConsent] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [userPreferences, setUserPreferences] = useState<RecommendationRequest>({
     mood: "",
