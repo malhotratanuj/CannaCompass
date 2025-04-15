@@ -155,13 +155,19 @@ const MoodSelection: FC<MoodSelectionProps> = ({
           <Button
             onClick={handleNextStep}
             disabled={!isButtonEnabled}
-            className={`px-6 py-3 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out ${
+            className={`px-6 py-3 font-medium rounded-lg shadow-sm transition duration-150 ease-in-out ${
               isButtonEnabled 
-                ? 'bg-primary-600 hover:bg-primary-700 transform hover:-translate-y-1 hover:shadow-md' 
-                : 'bg-gray-400 opacity-50 cursor-not-allowed'
+                ? 'bg-green-600 hover:bg-green-700 text-white transform hover:-translate-y-1 hover:shadow-md border-2 border-green-700' 
+                : 'bg-gray-200 text-gray-600 border border-gray-300 cursor-not-allowed'
             }`}
+            style={{
+              boxShadow: isButtonEnabled ? '0 4px 6px rgba(0, 0, 0, 0.1)' : 'none',
+              minWidth: '200px'
+            }}
           >
-            {isButtonEnabled ? 'Continue With ' + selectedMood.charAt(0).toUpperCase() + selectedMood.slice(1) : 'Select a Mood First'}
+            {isButtonEnabled 
+              ? 'Continue With ' + selectedMood.charAt(0).toUpperCase() + selectedMood.slice(1) 
+              : 'Select a Mood First'}
           </Button>
         </div>
       </div>

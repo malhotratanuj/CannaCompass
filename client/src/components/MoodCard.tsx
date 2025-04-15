@@ -9,8 +9,8 @@ interface MoodCardProps {
 
 const MoodCard: FC<MoodCardProps> = ({ mood, selected, onClick }) => {
   const moodInfo = MOODS[mood];
-  const borderColor = selected ? 'border-primary-600' : 'border-gray-200';
-  const bgColor = selected ? 'bg-primary-50' : 'bg-white';
+  const borderColor = selected ? 'border-green-600' : 'border-gray-200';
+  const bgColor = selected ? 'bg-green-50' : 'bg-white';
 
   // Map mood colors to text colors for the icons
   const colorMap: Record<string, string> = {
@@ -74,7 +74,7 @@ const MoodCard: FC<MoodCardProps> = ({ mood, selected, onClick }) => {
   
   return (
     <div 
-      className={`mood-card cursor-pointer ${bgColor} rounded-xl shadow-sm border ${borderColor} p-4 flex flex-col items-center transition-all duration-200 hover:-translate-y-1 ${selected ? 'ring-2 ring-primary-500 selected' : ''}`}
+      className={`mood-card relative cursor-pointer ${bgColor} rounded-xl shadow-sm border ${borderColor} p-4 flex flex-col items-center transition-all duration-200 hover:-translate-y-1 ${selected ? 'ring-2 ring-green-500 selected' : ''}`}
       onClick={() => onClick(mood)}
       data-mood={mood}
       style={{ 
@@ -82,10 +82,17 @@ const MoodCard: FC<MoodCardProps> = ({ mood, selected, onClick }) => {
         boxShadow: selected ? '0 4px 6px rgba(0, 0, 0, 0.1)' : 'none'
       }}
     >
+      {selected && (
+        <div className="absolute top-2 right-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      )}
       <div className={`w-16 h-16 rounded-full ${moodInfo.color} flex items-center justify-center mb-3`}>
         {getMoodIcon(mood)}
       </div>
-      <span className={`font-medium ${selected ? 'text-primary-600' : ''}`}>{moodInfo.name}</span>
+      <span className={`font-medium ${selected ? 'text-green-600 font-bold' : ''}`}>{moodInfo.name}</span>
       <span className="text-xs text-gray-500 mt-1">{moodInfo.description}</span>
     </div>
   );
