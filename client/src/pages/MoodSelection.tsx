@@ -44,7 +44,22 @@ const MoodSelection: FC<MoodSelectionProps> = ({
 
   const handleMoodSelect = (mood: MoodType) => {
     console.log('Mood selected:', mood);
-    setSelectedMood(mood);
+    
+    // Toggle selection if clicking the same mood again
+    if (selectedMood === mood) {
+      setSelectedMood('');
+    } else {
+      setSelectedMood(mood);
+      
+      // Pre-load the next page data if needed
+      updatePreferences({
+        mood: mood,
+        experienceLevel: selectedExperience
+      });
+    }
+    
+    // Visual feedback through console
+    console.log('Updated selectedMood to:', selectedMood === mood ? '' : mood);
   };
 
   const handleExperienceChange = (experience: ExperienceLevel) => {
@@ -140,9 +155,13 @@ const MoodSelection: FC<MoodSelectionProps> = ({
           <Button
             onClick={handleNextStep}
             disabled={!isButtonEnabled}
-            className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`px-6 py-3 text-white font-medium rounded-lg shadow-sm transition duration-150 ease-in-out ${
+              isButtonEnabled 
+                ? 'bg-primary-600 hover:bg-primary-700 transform hover:-translate-y-1 hover:shadow-md' 
+                : 'bg-gray-400 opacity-50 cursor-not-allowed'
+            }`}
           >
-            Find My Strains
+            {isButtonEnabled ? 'Continue With ' + selectedMood.charAt(0).toUpperCase() + selectedMood.slice(1) : 'Select a Mood First'}
           </Button>
         </div>
       </div>

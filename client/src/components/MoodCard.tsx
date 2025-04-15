@@ -74,14 +74,18 @@ const MoodCard: FC<MoodCardProps> = ({ mood, selected, onClick }) => {
   
   return (
     <div 
-      className={`mood-card cursor-pointer ${bgColor} rounded-xl shadow-sm border ${borderColor} p-4 flex flex-col items-center transition-all duration-200 hover:-translate-y-1 ${selected ? 'selected' : ''}`}
+      className={`mood-card cursor-pointer ${bgColor} rounded-xl shadow-sm border ${borderColor} p-4 flex flex-col items-center transition-all duration-200 hover:-translate-y-1 ${selected ? 'ring-2 ring-primary-500 selected' : ''}`}
       onClick={() => onClick(mood)}
       data-mood={mood}
+      style={{ 
+        transform: selected ? 'translateY(-4px)' : 'none',
+        boxShadow: selected ? '0 4px 6px rgba(0, 0, 0, 0.1)' : 'none'
+      }}
     >
       <div className={`w-16 h-16 rounded-full ${moodInfo.color} flex items-center justify-center mb-3`}>
         {getMoodIcon(mood)}
       </div>
-      <span className="font-medium">{moodInfo.name}</span>
+      <span className={`font-medium ${selected ? 'text-primary-600' : ''}`}>{moodInfo.name}</span>
       <span className="text-xs text-gray-500 mt-1">{moodInfo.description}</span>
     </div>
   );
