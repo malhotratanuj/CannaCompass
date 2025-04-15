@@ -43,6 +43,7 @@ const MoodSelection: FC<MoodSelectionProps> = ({
   }, [selectedMood]);
 
   const handleMoodSelect = (mood: MoodType) => {
+    console.log('Mood selected:', mood);
     setSelectedMood(mood);
   };
 
