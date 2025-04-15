@@ -5,6 +5,8 @@ import MoodCard from '@/components/MoodCard';
 import { Button } from '@/components/ui/button';
 import { RecommendationRequest } from '@shared/schema';
 import { MoodType, MOODS, ExperienceLevel } from '@/types';
+import TutorialTooltip from '@/components/TutorialTooltip';
+import { useTutorial } from '@/contexts/TutorialContext';
 
 interface MoodSelectionProps {
   currentStep: number;
@@ -101,54 +103,58 @@ const MoodSelection: FC<MoodSelectionProps> = ({
         <h2 className="text-2xl font-bold text-gray-900 mb-4">How would you like to feel today?</h2>
         <p className="text-gray-600 mb-6">Select your desired mood or experience to get personalized strain recommendations.</p>
         
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          {moodTypes.map((mood) => (
-            <MoodCard 
-              key={mood}
-              mood={mood}
-              selected={selectedMood === mood}
-              onClick={handleMoodSelect}
-            />
-          ))}
+        <div id="mood-selection" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          <TutorialTooltip targetId="mood-selection" position="right">
+            {moodTypes.map((mood) => (
+              <MoodCard 
+                key={mood}
+                mood={mood}
+                selected={selectedMood === mood}
+                onClick={handleMoodSelect}
+              />
+            ))}
+          </TutorialTooltip>
         </div>
         
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Experience Level</h3>
-          <div className="mb-6">
-            <div className="flex items-center mb-2">
-              <input 
-                id="beginner" 
-                name="experience" 
-                type="radio" 
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                checked={selectedExperience === 'beginner'}
-                onChange={() => handleExperienceChange('beginner')}
-              />
-              <label htmlFor="beginner" className="ml-2 block text-sm font-medium text-gray-700">Beginner</label>
+        <div id="experience-level">
+          <TutorialTooltip targetId="experience-level" position="bottom">
+            <h3 className="text-lg font-semibold mb-3">Experience Level</h3>
+            <div className="mb-6">
+              <div className="flex items-center mb-2">
+                <input 
+                  id="beginner" 
+                  name="experience" 
+                  type="radio" 
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                  checked={selectedExperience === 'beginner'}
+                  onChange={() => handleExperienceChange('beginner')}
+                />
+                <label htmlFor="beginner" className="ml-2 block text-sm font-medium text-gray-700">Beginner</label>
+              </div>
+              <div className="flex items-center mb-2">
+                <input 
+                  id="intermediate" 
+                  name="experience" 
+                  type="radio" 
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                  checked={selectedExperience === 'intermediate'}
+                  onChange={() => handleExperienceChange('intermediate')}
+                />
+                <label htmlFor="intermediate" className="ml-2 block text-sm font-medium text-gray-700">Intermediate</label>
+              </div>
+              <div className="flex items-center">
+                <input 
+                  id="experienced" 
+                  name="experience" 
+                  type="radio" 
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                  checked={selectedExperience === 'experienced'}
+                  onChange={() => handleExperienceChange('experienced')}
+                />
+                <label htmlFor="experienced" className="ml-2 block text-sm font-medium text-gray-700">Experienced</label>
+              </div>
             </div>
-            <div className="flex items-center mb-2">
-              <input 
-                id="intermediate" 
-                name="experience" 
-                type="radio" 
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                checked={selectedExperience === 'intermediate'}
-                onChange={() => handleExperienceChange('intermediate')}
-              />
-              <label htmlFor="intermediate" className="ml-2 block text-sm font-medium text-gray-700">Intermediate</label>
-            </div>
-            <div className="flex items-center">
-              <input 
-                id="experienced" 
-                name="experience" 
-                type="radio" 
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                checked={selectedExperience === 'experienced'}
-                onChange={() => handleExperienceChange('experienced')}
-              />
-              <label htmlFor="experienced" className="ml-2 block text-sm font-medium text-gray-700">Experienced</label>
-            </div>
-          </div>
+          </TutorialTooltip>
         </div>
         
         <div className="flex justify-center mt-8">

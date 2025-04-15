@@ -2,6 +2,8 @@ import { FC } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+import TutorialTooltip from '@/components/TutorialTooltip';
+import { useTutorial } from '@/contexts/TutorialContext';
 
 interface HomeProps {
   onGetStarted: () => void;
@@ -9,6 +11,7 @@ interface HomeProps {
 
 const Home: FC<HomeProps> = ({ onGetStarted }) => {
   const [_, setLocation] = useLocation();
+  const { startTutorial } = useTutorial();
 
   const handleGetStarted = () => {
     onGetStarted();
@@ -17,23 +20,25 @@ const Home: FC<HomeProps> = ({ onGetStarted }) => {
 
   return (
     <div className="w-full">
-      <div className="max-w-4xl mx-auto text-center py-10 md:py-20">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-          What you seed is what you get! <br />
-          <span className="text-primary-600">Explore the best strains and seeds</span>
-        </h1>
-        
-        <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-          Find your perfect cannabis match based on your mood and preferences. Discover detailed strain information and locate nearby dispensaries that have what you're looking for.
-        </p>
-        
-        <Button 
-          onClick={handleGetStarted}
-          className="px-6 py-3 text-lg bg-primary-600 hover:bg-primary-700"
-        >
-          Find My Perfect Strain
-          <ArrowRight className="ml-2 h-5 w-5" />
-        </Button>
+      <div id="home-intro" className="max-w-4xl mx-auto text-center py-10 md:py-20">
+        <TutorialTooltip targetId="home-intro" position="top">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            What you seed is what you get! <br />
+            <span className="text-primary-600">Explore the best strains and seeds</span>
+          </h1>
+          
+          <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+            Find your perfect cannabis match based on your mood and preferences. Discover detailed strain information and locate nearby dispensaries that have what you're looking for.
+          </p>
+          
+          <Button 
+            onClick={handleGetStarted}
+            className="px-6 py-3 text-lg bg-green-600 hover:bg-green-700 text-white animate-pulse-green"
+          >
+            Find My Perfect Strain
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
+        </TutorialTooltip>
         
         <div className="mt-16 relative">
           <img 

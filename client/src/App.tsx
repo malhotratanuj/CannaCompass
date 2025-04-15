@@ -33,6 +33,14 @@ function App() {
   useEffect(() => {
     console.log('Current location:', location);
   }, [location]);
+  
+  // Show welcome modal on first visit
+  useEffect(() => {
+    if (location === '/' && !localStorage.getItem('tutorialShown')) {
+      setShowWelcomeModal(true);
+      localStorage.setItem('tutorialShown', 'true');
+    }
+  }, [location]);
 
   // Update step based on current route
   useEffect(() => {
@@ -67,64 +75,71 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 text-gray-900">
-      <Header />
-      
-      <main className="flex-grow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Switch>
-            <Route path="/">
-              <Home onGetStarted={() => setCurrentStep(1)} />
-            </Route>
-            <Route path="/mood-selection">
-              <MoodSelection 
-                currentStep={currentStep}
-                onStepChange={handleStepChange}
-                preferences={userPreferences}
-                updatePreferences={updatePreferences}
-              />
-            </Route>
-            <Route path="/effects-preferences">
-              <EffectsPreferences 
-                currentStep={currentStep}
-                onStepChange={handleStepChange}
-                preferences={userPreferences}
-                updatePreferences={updatePreferences}
-              />
-            </Route>
-            <Route path="/recommendations">
-              <StrainRecommendations 
-                currentStep={currentStep}
-                onStepChange={handleStepChange}
-                preferences={userPreferences}
-                recommendedStrains={recommendedStrains}
-                setRecommendedStrains={setRecommendedStrains}
-                selectedStrains={selectedStrains}
-                onStrainSelect={handleStrainSelect}
-              />
-            </Route>
-            <Route path="/store-finder">
-              <StoreFinder 
-                currentStep={currentStep}
-                onStepChange={handleStepChange}
-                selectedStrains={selectedStrains}
-              />
-            </Route>
-            <Route component={NotFound} />
-          </Switch>
-        </div>
-      </main>
-      
-      <Footer />
-      <Toaster />
-      
-      {showPrivacyConsent && (
-        <PrivacyConsent 
-          onAccept={() => setShowPrivacyConsent(false)}
-          onCustomize={() => setShowPrivacyConsent(false)}
+    <TutorialProvider>
+      <div className="min-h-screen flex flex-col bg-gray-50 text-gray-900">
+        <Header />
+        
+        <main className="flex-grow">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <Switch>
+              <Route path="/">
+                <Home onGetStarted={() => setCurrentStep(1)} />
+              </Route>
+              <Route path="/mood-selection">
+                <MoodSelection 
+                  currentStep={currentStep}
+                  onStepChange={handleStepChange}
+                  preferences={userPreferences}
+                  updatePreferences={updatePreferences}
+                />
+              </Route>
+              <Route path="/effects-preferences">
+                <EffectsPreferences 
+                  currentStep={currentStep}
+                  onStepChange={handleStepChange}
+                  preferences={userPreferences}
+                  updatePreferences={updatePreferences}
+                />
+              </Route>
+              <Route path="/recommendations">
+                <StrainRecommendations 
+                  currentStep={currentStep}
+                  onStepChange={handleStepChange}
+                  preferences={userPreferences}
+                  recommendedStrains={recommendedStrains}
+                  setRecommendedStrains={setRecommendedStrains}
+                  selectedStrains={selectedStrains}
+                  onStrainSelect={handleStrainSelect}
+                />
+              </Route>
+              <Route path="/store-finder">
+                <StoreFinder 
+                  currentStep={currentStep}
+                  onStepChange={handleStepChange}
+                  selectedStrains={selectedStrains}
+                />
+              </Route>
+              <Route component={NotFound} />
+            </Switch>
+          </div>
+        </main>
+        
+        <Footer />
+        <Toaster />
+        
+        {showPrivacyConsent && (
+          <PrivacyConsent 
+            onAccept={() => setShowPrivacyConsent(false)}
+            onCustomize={() => setShowPrivacyConsent(false)}
+          />
+        )}
+
+        <WelcomeModal 
+          isOpen={showWelcomeModal}
+          onClose={() => setShowWelcomeModal(false)}
         />
-      )}
-    </div>
+      </div>
+    </TutorialProvider>
   );
 }
 

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { RecommendationRequest } from '@shared/schema';
 import { EFFECTS, FLAVORS, CONSUMPTION_METHODS } from '@/types';
 import { CheckCircle2, Circle } from 'lucide-react';
+import TutorialTooltip from '@/components/TutorialTooltip';
+import { useTutorial } from '@/contexts/TutorialContext';
 
 interface EffectsPreferencesProps {
   currentStep: number;
