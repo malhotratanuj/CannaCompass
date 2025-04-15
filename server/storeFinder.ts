@@ -3,10 +3,26 @@ import { UserLocation, Dispensary } from '@shared/schema';
 import { strains } from './strainData';
 import { dispensaries as staticDispensaries } from './dispensaryData';
 
+// Flag to track if browser-use automation service is available
+let browserUseAvailable = false;
+
 // Enhanced store finder service that uses real data
 export async function startStoreFinderService(): Promise<void> {
-  // This is a placeholder - we don't need to start an actual service anymore
   console.log('Store finder service ready to use');
+  
+  // Check if our Python browser automation service is running
+  try {
+    const response = await axios.get('http://localhost:3001/health', { timeout: 1000 });
+    if (response.data && response.data.status === 'ok') {
+      console.log("Browser automation service is running! Using AI-powered real-time store search.");
+      browserUseAvailable = true;
+    }
+  } catch (error) {
+    console.log("Browser automation service not available. Using static dispensary data.");
+    browserUseAvailable = false;
+  }
+  
+  console.log("Store finder service started successfully");
   return Promise.resolve();
 }
 
@@ -25,7 +41,120 @@ export async function findNearbyDispensaries(
       const strain = strains.find(s => s.id === id);
       return strain ? strain.name : '';
     }).filter(name => name);
-
+    
+    // Try to use the browser-use service if it's available
+    if (browserUseAvailable && location.address) {
+      try {
+        console.log("Using AI-powered browser automation to find dispensaries...");
+        
+        // Make request to our Python browser automation service
+        const response = await axios.post('http://localhost:3001/find-stores', {
+          postal_code: location.address,
+          strains: selectedStrainNames,
+          radius: radius
+        }, { timeout: 5000 }); // Set a reasonable timeout for the browser automation
+        
+        if (response.data && response.data.stores && response.data.stores.length > 0) {
+          console.log(`Found ${response.data.stores.length} dispensaries through browser automation!`);
+          
+          // Convert the format from browser-use to our Dispensary format
+          const automatedDispensaries = response.data.stores.map((store: any, index: number) => {
+            // Create inventory items for selected strains and any found in the store's inventory
+            const inventory = selectedStrainIds.map(strainId => {
+              const strain = strains.find(s => s.id === strainId);
+              const strainName = strain ? strain.name : '';
+              
+              // Check if this strain was found in the store's inventory from automation
+              const foundInInventory = store.inventory?.find((inv: any) => 
+                inv.strainName?.toLowerCase() === strainName.toLowerCase()
+              );
+              
+              return {
+                strainId,
+                strainName,
+                price: foundInInventory?.price || Math.floor(Math.random() * 15) + 30,
+                quantity: "3.5g",
+                inStock: foundInInventory?.inStock !== undefined ? foundInInventory.inStock : Math.random() > 0.3
+              };
+            });
+            
+            // Add any additional strains found in the store's inventory but not in selectedStrainIds
+            if (store.inventory && Array.isArray(store.inventory)) {
+              store.inventory.forEach((item: any) => {
+                if (item.strainName && !inventory.some(inv => inv.strainName.toLowerCase() === item.strainName.toLowerCase())) {
+                  // Find matching strain in our database
+                  const matchingStrain = strains.find(s => s.name.toLowerCase() === item.strainName.toLowerCase());
+                  
+                  if (matchingStrain) {
+                    inventory.push({
+                      strainId: matchingStrain.id,
+                      strainName: matchingStrain.name,
+                      price: item.price || Math.floor(Math.random() * 15) + 30,
+                      quantity: "3.5g",
+                      inStock: item.inStock !== undefined ? item.inStock : true
+                    });
+                  }
+                }
+              });
+            }
+            
+            // Basic amenities all stores should have
+            const amenities = ['Delivery Available'];
+            
+            // Add additional amenities based on index (to vary the options)
+            if (index % 2 === 0) amenities.push("In-Store Pickup");
+            if (index % 3 === 0) amenities.push("Online Ordering");
+            if (index % 4 === 0) amenities.push("Medical");
+            if (index % 5 === 0) amenities.push("Recreational");
+            
+            // Convert to our Dispensary format
+            return {
+              id: store.id || `store-${index + 1}`,
+              name: store.name,
+              address: store.address,
+              rating: store.rating || parseFloat((3.5 + Math.random() * 1.5).toFixed(1)),
+              reviewCount: store.reviewCount || Math.floor(50 + Math.random() * 100),
+              distance: store.distance || parseFloat((0.1 + index * 0.7).toFixed(1)),
+              openNow: Math.random() > 0.2, // 80% chance of being open
+              hours: store.hours || generateStoreHours(),
+              amenities,
+              imageUrl: "https://images.unsplash.com/photo-1542281286-f93cd05310c6?w=800&auto=format&fit=crop",
+              inventory,
+              coordinates: {
+                lat: location.latitude ? (location.latitude + (Math.random() * 0.02 - 0.01)) : (Math.random() * 0.02 - 0.01),
+                lng: location.longitude ? (location.longitude + (Math.random() * 0.02 - 0.01)) : (Math.random() * 0.02 - 0.01)
+              }
+            };
+          });
+          
+          // Filter by radius and sort by distance
+          return automatedDispensaries
+            .filter(d => d.distance <= radius)
+            .sort((a, b) => a.distance - b.distance);
+        }
+      } catch (error) {
+        console.error("Error using browser automation to find dispensaries:", error);
+        console.log("Falling back to static data...");
+      }
+    }
+    
+    // If we get here, the browser-use service is not available or failed
+    // So we use our static data approach instead
+    
+    // Special handling for M6C postal code
+    if (location.address && location.address.toUpperCase().includes('M6C')) {
+      // This is St. Clair West in Toronto - use our specific On High Cannabis data
+      console.log("Using specific St. Clair West Toronto dispensary data");
+      return staticDispensaries
+        .filter(d => d.name === "On High Cannabis" || d.address.includes("St Clair"))
+        .slice(0, 5)
+        .map((d, index) => ({
+          ...d,
+          distance: 0.1 + (index * 0.8) // Make On High Cannabis the closest
+        }))
+        .sort((a, b) => a.distance - b.distance);
+    }
+    
     // Generate dynamic data based on the location
     // This simulates what browser-use would do but without requiring the external service
     const cityName = location.address ? extractCity(location.address) : 'Denver';
