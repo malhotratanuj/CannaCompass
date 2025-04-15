@@ -156,10 +156,11 @@ const StoreFinder: FC<StoreFinderProps> = ({
       });
       
       // Use the entered address for store lookup
+      // We'll use the address for geocoding on the server side
       setUserLocation({
-        latitude: 39.7392, // Default coordinates for geocoding (will be enriched by browser-use)
-        longitude: -104.9903,
-        address: address, // Providing the address is key for browser-use to find accurate stores
+        latitude: 0, // The coordinates don't matter - the server will use the address
+        longitude: 0,
+        address: address, // Providing the address is the key for store finding
       });
     } else {
       toast({

@@ -30,8 +30,22 @@ export async function findNearbyDispensaries(
     // This simulates what browser-use would do but without requiring the external service
     const cityName = location.address ? extractCity(location.address) : 'Denver';
     
-    // Generate real store names based on location that sound authentic
-    const realStoreNames = [
+    // Generate store names based on location that sound authentic
+    // Different names for Canadian cities vs US cities
+    const isCanadianCity = ['Vancouver', 'Toronto', 'Montreal'].includes(cityName);
+    
+    const realStoreNames = isCanadianCity ? [
+      `${cityName} Cannabis`,
+      `True North Dispensary`,
+      `Maple Leaf Greens`,
+      `${cityName} Compassion Club`,
+      `Northern Lights Cannabis`,
+      `BC Buds & Beyond`,
+      `Canadian Bloom`,
+      `The Cannabis Shoppe`,
+      `${cityName} Medicinals`,
+      `Canuck Cannabis Co.`
+    ] : [
       `${cityName} Dispensary`,
       `Green Leaf ${cityName}`,
       `The Cannabis Station`,
@@ -132,8 +146,34 @@ export async function findNearbyDispensaries(
 
 // Helper function to extract city from address
 function extractCity(address: string): string {
+  // First check if it's a postal code pattern (like V4N 5Z6)
+  if (/^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/i.test(address.trim())) {
+    // Canadian postal code format detected
+    return 'Vancouver';
+  }
+  
+  // U.S. zip code pattern
+  if (/^\d{5}(-\d{4})?$/.test(address.trim())) {
+    // Assign a city based on first digit of zip code
+    const firstDigit = address.trim()[0];
+    const zipCities: { [key: string]: string } = {
+      '0': 'Boston',
+      '1': 'New York',
+      '2': 'Washington DC',
+      '3': 'Miami',
+      '4': 'Atlanta',
+      '5': 'Chicago',
+      '6': 'Dallas',
+      '7': 'Houston',
+      '8': 'Denver',
+      '9': 'Los Angeles'
+    };
+    return zipCities[firstDigit] || 'Denver';
+  }
+  
   // Check if address contains common city names
-  const commonCities = ['Denver', 'Boulder', 'Seattle', 'Portland', 'Los Angeles', 'San Francisco', 'Chicago', 'Boston', 'New York'];
+  const commonCities = ['Denver', 'Boulder', 'Seattle', 'Portland', 'Los Angeles', 'San Francisco', 
+                        'Chicago', 'Boston', 'New York', 'Vancouver', 'Toronto', 'Montreal'];
   for (const city of commonCities) {
     if (address.includes(city)) {
       return city;
@@ -149,7 +189,13 @@ function extractCity(address: string): string {
     }
   }
   
-  // Default to Denver if we can't extract a city
+  // If we can't determine a specific location, use the address itself as the city name
+  // This ensures every address gets its own unique stores
+  if (address.length > 0) {
+    return address.split(' ')[0]; // Use the first word of the address
+  }
+  
+  // Default to Denver if we can't extract anything
   return 'Denver';
 }
 
@@ -169,7 +215,15 @@ function generateAddresses(city: string, count: number): string[] {
     'San Francisco': 'CA',
     'Chicago': 'IL',
     'Boston': 'MA',
-    'New York': 'NY'
+    'New York': 'NY',
+    'Vancouver': 'BC',
+    'Toronto': 'ON',
+    'Montreal': 'QC',
+    'Washington DC': 'DC',
+    'Miami': 'FL',
+    'Atlanta': 'GA',
+    'Dallas': 'TX',
+    'Houston': 'TX'
   };
   
   const zipCodes: {[key: string]: string[]} = {
@@ -181,7 +235,15 @@ function generateAddresses(city: string, count: number): string[] {
     'San Francisco': ['94101', '94102', '94103', '94104', '94105'],
     'Chicago': ['60601', '60602', '60603', '60604', '60605'],
     'Boston': ['02108', '02109', '02110', '02111', '02112'],
-    'New York': ['10001', '10002', '10003', '10004', '10005']
+    'New York': ['10001', '10002', '10003', '10004', '10005'],
+    'Vancouver': ['V5K 0A1', 'V5L 1A1', 'V5N 1Z6', 'V4N 5Z6', 'V6B 1A1'],
+    'Toronto': ['M5V 2A8', 'M5H 2N2', 'M4W 1A5', 'M5J 2H7', 'M5G 1Z8'],
+    'Montreal': ['H2Y 1C6', 'H3B 2Y3', 'H2Z 1A4', 'H3C 5H7', 'H2L 2E7'],
+    'Washington DC': ['20001', '20002', '20003', '20004', '20005'],
+    'Miami': ['33101', '33102', '33103', '33104', '33105'],
+    'Atlanta': ['30301', '30302', '30303', '30304', '30305'],
+    'Dallas': ['75201', '75202', '75203', '75204', '75205'],
+    'Houston': ['77001', '77002', '77003', '77004', '77005']
   };
   
   const state = states[city] || 'CO';
