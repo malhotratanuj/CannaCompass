@@ -27,7 +27,7 @@ export async function findNearbyDispensaries(
   console.log('Making API call to findNearbyDispensaries:', { location, radius, strainIds });
   try {
     const response = await apiRequest("POST", "/api/dispensaries/nearby", {
-      ...location,
+      location,
       radius,
       strainIds,
     });
@@ -52,7 +52,7 @@ export async function findNearbyDispensariesStatic(
   radius: number = 10
 ): Promise<Dispensary[]> {
   const response = await apiRequest("POST", "/api/dispensaries/static", {
-    ...location,
+    location,
     radius,
   });
   const data = await response.json();

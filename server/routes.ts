@@ -93,20 +93,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Find nearby dispensaries (using dynamic store finder to search for dispensaries)
   app.post("/api/dispensaries/nearby", async (req: Request, res: Response) => {
     try {
-      const { latitude, longitude, address, strainIds = [] } = req.body;
+      const { location, strainIds = [] } = req.body;
       
-      if (!latitude || !longitude) {
-        return res.status(400).json({ message: "Location coordinates are required" });
+      if (!location) {
+        return res.status(400).json({ message: "Location information is required" });
+      }
+      
+      const { latitude, longitude, address } = location;
+      
+      // For Canadian addresses, we can proceed with just the address
+      const isCanadianAddress = address && 
+        ((/^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/i.test(address.trim())) || // Postal code format
+         (/\b(BC|AB|SK|MB|ON|QC|NB|NS|PE|NL|YT|NT|NU)\b/i.test(address))); // Province code format
+      
+      // If it's not a Canadian address, we require coordinates
+      if (!isCanadianAddress && (!latitude || !longitude)) {
+        return res.status(400).json({ message: "Location coordinates are required for non-Canadian addresses" });
       }
       
       console.log("Finding nearby dispensaries using dynamic store finder...");
-      console.log(`Location: ${latitude}, ${longitude}`);
+      if (address) console.log(`Finding dispensaries near ${address}`);
+      if (latitude && longitude) console.log(`Location: ${latitude}, ${longitude}`);
       console.log(`Selected strains: ${strainIds.join(', ')}`);
       
       // Get the user's location
       const userLocation: UserLocation = {
-        latitude,
-        longitude,
+        latitude: latitude || 0, // Default to 0 for Canadian addresses without coordinates
+        longitude: longitude || 0,
         address
       };
       
@@ -127,9 +140,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fallback to static data if store finder fails
       try {
         console.log("Falling back to static dispensary data...");
-        const { latitude, longitude, radius = 10 } = req.body;
+        const radius = req.body.radius || 10;
+        // Get location data from location object
+        const { latitude, longitude } = req.body.location || { latitude: 0, longitude: 0 };
+        
+        // Default to Vancouver coordinates if we don't have valid ones
+        const fallbackLat = latitude || 49.2827;
+        const fallbackLng = longitude || -123.1207;
+        
         const dispensaries = await storage.findNearbyDispensaries(
-          { latitude, longitude },
+          { latitude: fallbackLat, longitude: fallbackLng },
           radius
         );
         return res.json({ 
