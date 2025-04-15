@@ -3,6 +3,149 @@ import { Dispensary } from "@shared/schema";
 // Log to ensure this file is being loaded
 console.log("Loading dispensary data...");
 
+// Add specific stores for Toronto-StClair area (M6C postal code)
+const torontoStClairDispensaries: Dispensary[] = [
+  {
+    id: 'store-toronto-1',
+    name: 'On High Cannabis',
+    address: '806-A St Clair Ave West, Toronto, ON M6C 1B6',
+    rating: 4.7,
+    reviewCount: 132,
+    distance: 0.1, // Very close, this is the real store at this location
+    openNow: true,
+    hours: '10AM - 10PM, 7 days a week',
+    amenities: [
+      'Delivery Available',
+      'In-Store Pickup',
+      'Online Ordering',
+      'Medical',
+      'Recreational'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1542281286-f93cd05310c6?w=800&auto=format&fit=crop',
+    inventory: [
+      {
+        strainId: 'og1',
+        strainName: 'OG Kush',
+        price: 36,
+        quantity: '3.5g',
+        inStock: true
+      },
+      {
+        strainId: 'ss1',
+        strainName: 'Sour Diesel',
+        price: 39,
+        quantity: '3.5g',
+        inStock: true
+      },
+      {
+        strainId: 'gdp1',
+        strainName: 'Granddaddy Purple',
+        price: 42,
+        quantity: '3.5g',
+        inStock: true
+      },
+      {
+        strainId: 'bd1',
+        strainName: 'Blue Dream',
+        price: 38,
+        quantity: '3.5g',
+        inStock: true
+      },
+      {
+        strainId: 'pu1',
+        strainName: 'Purple Urkle',
+        price: 41,
+        quantity: '3.5g',
+        inStock: true
+      }
+    ],
+    coordinates: {
+      lat: 43.6815,
+      lng: -79.4199
+    }
+  },
+  {
+    id: 'store-toronto-2',
+    name: 'Leaf Cannabis Company',
+    address: '1051 St Clair Ave West, Toronto, ON M6E 1A4',
+    rating: 4.3,
+    reviewCount: 85,
+    distance: 0.9, // A bit further away on St. Clair
+    openNow: true,
+    hours: '9AM - 11PM, 7 days a week',
+    amenities: [
+      'Delivery Available',
+      'Online Ordering',
+      'Recreational'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1542281286-f93cd05310c6?w=800&auto=format&fit=crop',
+    inventory: [
+      {
+        strainId: 'og1',
+        strainName: 'OG Kush',
+        price: 34,
+        quantity: '3.5g',
+        inStock: true
+      },
+      {
+        strainId: 'ss1',
+        strainName: 'Sour Diesel',
+        price: 37,
+        quantity: '3.5g',
+        inStock: true
+      },
+      {
+        strainId: 'gdp1',
+        strainName: 'Granddaddy Purple',
+        price: 40,
+        quantity: '3.5g',
+        inStock: true
+      }
+    ],
+    coordinates: {
+      lat: 43.6774,
+      lng: -79.4442
+    }
+  },
+  {
+    id: 'store-toronto-3',
+    name: 'Canna Cabana',
+    address: '700 Bathurst St, Toronto, ON M5S 2R4',
+    rating: 4.6,
+    reviewCount: 156,
+    distance: 2.1, // Further south
+    openNow: true,
+    hours: '9AM - 10PM, 7 days a week',
+    amenities: [
+      'In-Store Pickup',
+      'Online Ordering',
+      'Medical',
+      'Recreational'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1542281286-f93cd05310c6?w=800&auto=format&fit=crop',
+    inventory: [
+      {
+        strainId: 'og1',
+        strainName: 'OG Kush',
+        price: 35,
+        quantity: '3.5g',
+        inStock: true
+      },
+      {
+        strainId: 'ss1',
+        strainName: 'Sour Diesel',
+        price: 38,
+        quantity: '3.5g',
+        inStock: true
+      }
+    ],
+    coordinates: {
+      lat: 43.6636,
+      lng: -79.4113
+    }
+  }
+];
+
 export const dispensaries: Dispensary[] = [
   {
     id: "disp1",

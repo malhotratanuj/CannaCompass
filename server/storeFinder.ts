@@ -156,6 +156,15 @@ function extractCity(address: string): string {
     // Map postal code prefixes to cities
     const firstLetter = cleanAddress[0];
     
+    // Extract first 3 characters of postal code (Forward Sortation Area)
+    const fsa = cleanAddress.substring(0, 3);
+    
+    // Check if it's a specific Toronto postal code we want to handle
+    // M6C is St. Clair West area
+    if (fsa === 'M6C') {
+      return 'Toronto-StClair';
+    }
+    
     const postalCityMap: { [key: string]: string } = {
       'V': 'Vancouver', // British Columbia
       'T': 'Calgary',   // Alberta
