@@ -223,13 +223,43 @@ export class MemStorage implements IStorage {
     
     // Filter by additional effects if specified
     if (preferences.effects && preferences.effects.length > 0) {
-      filteredStrains = filteredStrains.filter(strain => 
-        preferences.effects!.some(effect => 
-          strain.effects.some(strainEffect => 
-            strainEffect.toLowerCase().includes(effect.toLowerCase())
-          )
-        )
+      // Create a mapping to handle various forms of the same effect
+      const effectMapping: Record<string, string[]> = {
+        'Relaxation': ['Relaxing', 'Relaxation', 'Calming', 'Peaceful'],
+        'Energy': ['Energetic', 'Energy', 'Active'],
+        'Focus': ['Focused', 'Focus', 'Clear-headed', 'Productive'],
+        'Creativity': ['Creative', 'Creativity', 'Inspired'],
+        'Euphoria': ['Euphoric', 'Euphoria', 'Happy'],
+        'Pain Relief': ['Pain Relief', 'Analgesic']
+      };
+      
+      const matchedStrains = filteredStrains.filter(strain => 
+        preferences.effects!.some(effect => {
+          // Get synonyms for this effect (if they exist, otherwise use the effect itself)
+          const synonyms = effectMapping[effect] || [effect];
+          
+          // Check if any strain effect matches any of the synonyms
+          return strain.effects.some(strainEffect => 
+            synonyms.some(synonym => 
+              strainEffect.toLowerCase().includes(synonym.toLowerCase())
+            )
+          );
+        })
       );
+      
+      if (matchedStrains.length > 0) {
+        filteredStrains = matchedStrains;
+      } else {
+        // If no matches were found with the effects filter, log this and reset to before this filter
+        console.log(`No strains match the effect filters. Skipping effect filters.`);
+        // We'll keep the strains filtered by mood only in this case
+      }
+    }
+    
+    // If no strains were found after all filters, return default set
+    if (filteredStrains.length === 0) {
+      console.log("No matching strains found after all filtering, using default set");
+      return strains.slice(0, 4);
     }
     
     // Filter by flavors if specified
