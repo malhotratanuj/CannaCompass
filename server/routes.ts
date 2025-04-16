@@ -4,8 +4,11 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { userPreferencesSchema, savedStrainSchema, UserLocation } from "@shared/schema";
 import { findNearbyDispensaries, startStoreFinderService } from "./storeFinder";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  setupAuth(app);
   // prefix all routes with /api
   
   // Get strain recommendations based on user preferences

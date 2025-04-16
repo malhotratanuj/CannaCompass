@@ -7,6 +7,8 @@ import {
 import { strains } from "./strainData";
 import { dispensaries } from "./dispensaryData";
 
+import session from "express-session";
+
 // Interface for storage operations
 export interface IStorage {
   // User management
@@ -31,19 +33,30 @@ export interface IStorage {
   // Dispensary finder
   findNearbyDispensaries(location: UserLocation, radius: number): Promise<Dispensary[]>;
   getDispensaryById(dispensaryId: string): Promise<Dispensary | undefined>;
+  
+  // Session store for authentication
+  sessionStore: session.Store;
 }
+
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private userPreferencesMap: Map<number, UserPreferences>;
   private savedStrainsMap: Map<number, SavedStrain[]>;
   currentId: number;
+  sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
     this.userPreferencesMap = new Map();
     this.savedStrainsMap = new Map();
     this.currentId = 1;
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
   }
 
   // User management
@@ -271,7 +284,10 @@ export class MemStorage implements IStorage {
   }
 }
 
-import { DatabaseStorage } from './databaseStorage';
+// We'll set this to DatabaseStorage in a separate import to avoid circular dependencies
+export let storage: IStorage;
 
-// Use the database storage implementation
-export const storage = new DatabaseStorage();
+// This will be called after DatabaseStorage is defined
+export function setStorage(storageImplementation: IStorage) {
+  storage = storageImplementation;
+}

@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startStoreFinderService } from "./storeFinder";
+import { initializeStorage } from "./storageInit";
 
 // Load strain and dispensary data
 console.log("Loading strain data...");
@@ -42,6 +43,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize the storage system
+  console.log("Initializing database storage...");
+  initializeStorage();
+  
   // Try to start the store finder service
   try {
     await startStoreFinderService();
