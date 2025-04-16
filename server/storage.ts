@@ -339,8 +339,8 @@ export class MemStorage implements IStorage {
   async getUserReviews(userId: number): Promise<StrainReview[]> {
     // Collect all reviews from all strains
     const allReviews: StrainReview[] = [];
-    for (const reviews of this.strainReviewsMap.values()) {
-      allReviews.push(...reviews.filter(review => review.userId === userId));
+    for (const reviews of Array.from(this.strainReviewsMap.values())) {
+      allReviews.push(...reviews.filter((review: StrainReview) => review.userId === userId));
     }
     return allReviews;
   }

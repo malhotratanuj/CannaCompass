@@ -2,7 +2,14 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { userPreferencesSchema, savedStrainSchema, UserLocation } from "@shared/schema";
+import { 
+  userPreferencesSchema, 
+  savedStrainSchema, 
+  strainReviewSchema, 
+  communityDiscussionSchema, 
+  discussionCommentSchema,
+  UserLocation 
+} from "@shared/schema";
 import { findNearbyDispensaries, startStoreFinderService } from "./storeFinder";
 import { setupAuth } from "./auth";
 
@@ -270,6 +277,356 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting saved strains:", error);
       return res.status(500).json({ message: "Failed to get saved strains" });
+    }
+  });
+
+  // ==================== STRAIN REVIEWS ROUTES ====================
+  
+  // Get reviews for a specific strain
+  app.get("/api/strains/:strainId/reviews", async (req: Request, res: Response) => {
+    try {
+      const { strainId } = req.params;
+      const reviews = await storage.getStrainReviews(strainId);
+      return res.json({ reviews });
+    } catch (error) {
+      console.error("Error getting strain reviews:", error);
+      return res.status(500).json({ message: "Failed to get strain reviews" });
+    }
+  });
+  
+  // Get a specific review by ID
+  app.get("/api/reviews/:reviewId", async (req: Request, res: Response) => {
+    try {
+      const { reviewId } = req.params;
+      const review = await storage.getReviewById(parseInt(reviewId));
+      
+      if (!review) {
+        return res.status(404).json({ message: "Review not found" });
+      }
+      
+      return res.json({ review });
+    } catch (error) {
+      console.error("Error getting review:", error);
+      return res.status(500).json({ message: "Failed to get review" });
+    }
+  });
+  
+  // Create a new review
+  app.post("/api/reviews", async (req: Request, res: Response) => {
+    try {
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      // Validate the request body using Zod
+      const validatedData = strainReviewSchema.parse(req.body);
+      
+      const review = await storage.createReview(userId, validatedData);
+      return res.status(201).json({ review });
+    } catch (error) {
+      console.error("Error creating review:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid review data", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Failed to create review" });
+    }
+  });
+  
+  // Update a review
+  app.put("/api/reviews/:reviewId", async (req: Request, res: Response) => {
+    try {
+      const { reviewId } = req.params;
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      // Validate the request body using Zod
+      const validatedData = strainReviewSchema.partial().parse(req.body);
+      
+      const updatedReview = await storage.updateReview(parseInt(reviewId), userId, validatedData);
+      
+      if (!updatedReview) {
+        return res.status(404).json({ message: "Review not found or you don't have permission to update it" });
+      }
+      
+      return res.json({ review: updatedReview });
+    } catch (error) {
+      console.error("Error updating review:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid review data", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Failed to update review" });
+    }
+  });
+  
+  // Delete a review
+  app.delete("/api/reviews/:reviewId", async (req: Request, res: Response) => {
+    try {
+      const { reviewId } = req.params;
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      const success = await storage.deleteReview(parseInt(reviewId), userId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Review not found or you don't have permission to delete it" });
+      }
+      
+      return res.json({ success });
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      return res.status(500).json({ message: "Failed to delete review" });
+    }
+  });
+  
+  // Get all reviews by a user
+  app.get("/api/users/:userId/reviews", async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const reviews = await storage.getUserReviews(parseInt(userId));
+      return res.json({ reviews });
+    } catch (error) {
+      console.error("Error getting user reviews:", error);
+      return res.status(500).json({ message: "Failed to get user reviews" });
+    }
+  });
+  
+  // Get current user's reviews
+  app.get("/api/user/reviews", async (req: Request, res: Response) => {
+    try {
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      const reviews = await storage.getUserReviews(userId);
+      return res.json({ reviews });
+    } catch (error) {
+      console.error("Error getting user reviews:", error);
+      return res.status(500).json({ message: "Failed to get user reviews" });
+    }
+  });
+  
+  // ================== COMMUNITY DISCUSSION ROUTES =================
+  
+  // Get all community discussions with pagination
+  app.get("/api/discussions", async (req: Request, res: Response) => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const tag = req.query.tag as string;
+      
+      const discussions = await storage.getDiscussions(page, limit, tag);
+      return res.json({ discussions });
+    } catch (error) {
+      console.error("Error getting discussions:", error);
+      return res.status(500).json({ message: "Failed to get discussions" });
+    }
+  });
+  
+  // Get a specific discussion by ID
+  app.get("/api/discussions/:discussionId", async (req: Request, res: Response) => {
+    try {
+      const { discussionId } = req.params;
+      const discussion = await storage.getDiscussionById(parseInt(discussionId));
+      
+      if (!discussion) {
+        return res.status(404).json({ message: "Discussion not found" });
+      }
+      
+      // Get comments for this discussion
+      const comments = await storage.getCommentsByDiscussion(parseInt(discussionId));
+      
+      return res.json({ discussion, comments });
+    } catch (error) {
+      console.error("Error getting discussion:", error);
+      return res.status(500).json({ message: "Failed to get discussion" });
+    }
+  });
+  
+  // Create a new discussion
+  app.post("/api/discussions", async (req: Request, res: Response) => {
+    try {
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      // Validate the request body using Zod
+      const validatedData = communityDiscussionSchema.parse(req.body);
+      
+      const discussion = await storage.createDiscussion(userId, validatedData);
+      return res.status(201).json({ discussion });
+    } catch (error) {
+      console.error("Error creating discussion:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid discussion data", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Failed to create discussion" });
+    }
+  });
+  
+  // Update a discussion
+  app.put("/api/discussions/:discussionId", async (req: Request, res: Response) => {
+    try {
+      const { discussionId } = req.params;
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      // Validate the request body using Zod
+      const validatedData = communityDiscussionSchema.partial().parse(req.body);
+      
+      const updatedDiscussion = await storage.updateDiscussion(parseInt(discussionId), userId, validatedData);
+      
+      if (!updatedDiscussion) {
+        return res.status(404).json({ message: "Discussion not found or you don't have permission to update it" });
+      }
+      
+      return res.json({ discussion: updatedDiscussion });
+    } catch (error) {
+      console.error("Error updating discussion:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid discussion data", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Failed to update discussion" });
+    }
+  });
+  
+  // Delete a discussion
+  app.delete("/api/discussions/:discussionId", async (req: Request, res: Response) => {
+    try {
+      const { discussionId } = req.params;
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      const success = await storage.deleteDiscussion(parseInt(discussionId), userId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Discussion not found or you don't have permission to delete it" });
+      }
+      
+      return res.json({ success });
+    } catch (error) {
+      console.error("Error deleting discussion:", error);
+      return res.status(500).json({ message: "Failed to delete discussion" });
+    }
+  });
+  
+  // Like a discussion
+  app.post("/api/discussions/:discussionId/like", async (req: Request, res: Response) => {
+    try {
+      const { discussionId } = req.params;
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      const success = await storage.likeDiscussion(parseInt(discussionId), userId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Discussion not found" });
+      }
+      
+      return res.json({ success });
+    } catch (error) {
+      console.error("Error liking discussion:", error);
+      return res.status(500).json({ message: "Failed to like discussion" });
+    }
+  });
+  
+  // ================== DISCUSSION COMMENTS ROUTES =================
+  
+  // Get comments for a discussion
+  app.get("/api/discussions/:discussionId/comments", async (req: Request, res: Response) => {
+    try {
+      const { discussionId } = req.params;
+      const comments = await storage.getCommentsByDiscussion(parseInt(discussionId));
+      return res.json({ comments });
+    } catch (error) {
+      console.error("Error getting comments:", error);
+      return res.status(500).json({ message: "Failed to get comments" });
+    }
+  });
+  
+  // Add a comment to a discussion
+  app.post("/api/discussions/:discussionId/comments", async (req: Request, res: Response) => {
+    try {
+      const { discussionId } = req.params;
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      // Validate the request body using Zod
+      const validatedData = discussionCommentSchema.parse({
+        ...req.body,
+        discussionId: parseInt(discussionId)
+      });
+      
+      const comment = await storage.createComment(userId, validatedData);
+      return res.status(201).json({ comment });
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid comment data", errors: error.errors });
+      }
+      return res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+  
+  // Update a comment
+  app.put("/api/comments/:commentId", async (req: Request, res: Response) => {
+    try {
+      const { commentId } = req.params;
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      const { content } = req.body;
+      
+      if (!content) {
+        return res.status(400).json({ message: "Comment content is required" });
+      }
+      
+      const updatedComment = await storage.updateComment(parseInt(commentId), userId, content);
+      
+      if (!updatedComment) {
+        return res.status(404).json({ message: "Comment not found or you don't have permission to update it" });
+      }
+      
+      return res.json({ comment: updatedComment });
+    } catch (error) {
+      console.error("Error updating comment:", error);
+      return res.status(500).json({ message: "Failed to update comment" });
+    }
+  });
+  
+  // Delete a comment
+  app.delete("/api/comments/:commentId", async (req: Request, res: Response) => {
+    try {
+      const { commentId } = req.params;
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      const success = await storage.deleteComment(parseInt(commentId), userId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Comment not found or you don't have permission to delete it" });
+      }
+      
+      return res.json({ success });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      return res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+  
+  // Like a comment
+  app.post("/api/comments/:commentId/like", async (req: Request, res: Response) => {
+    try {
+      const { commentId } = req.params;
+      // In a real app, this would use the authenticated user's ID
+      const userId = req.user?.id || 1;
+      
+      const success = await storage.likeComment(parseInt(commentId), userId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+      
+      return res.json({ success });
+    } catch (error) {
+      console.error("Error liking comment:", error);
+      return res.status(500).json({ message: "Failed to like comment" });
     }
   });
 

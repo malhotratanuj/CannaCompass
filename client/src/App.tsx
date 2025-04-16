@@ -5,6 +5,7 @@ import Home from "@/pages/Home";
 import MoodSelection from "@/pages/MoodSelection";
 import EffectsPreferences from "@/pages/EffectsPreferences";
 import StrainRecommendations from "@/pages/StrainRecommendations";
+import StrainDetail from "@/pages/StrainDetail";
 import StoreFinder from "@/pages/StoreFinder";
 import AuthPage from "@/pages/auth-page";
 import { useState, useEffect } from "react";
