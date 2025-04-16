@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { useCelebration } from '@/contexts/CelebrationContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Strain } from '@shared/schema';
@@ -29,6 +30,7 @@ interface StrainReviewFormProps {
 const StrainReviewForm: React.FC<StrainReviewFormProps> = ({ strain, onSuccess }) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { triggerCelebration } = useCelebration();
   const queryClient = useQueryClient();
 
   const {
@@ -61,6 +63,9 @@ const StrainReviewForm: React.FC<StrainReviewFormProps> = ({ strain, onSuccess }
         title: 'Review submitted',
         description: 'Thank you for sharing your experience with this strain!',
       });
+      // Trigger the celebration for review submission
+      triggerCelebration('review_submitted');
+      // Refresh the reviews data
       queryClient.invalidateQueries({ queryKey: [`/api/strains/${strain.id}/reviews`] });
       reset();
       if (onSuccess) onSuccess();

@@ -66,6 +66,11 @@ const CelebrationMessage: FC<CelebrationMessageProps> = ({
           title: 'Preferences saved!',
           message: 'Your experience will now be personalized to your taste.'
         };
+      case 'review_submitted':
+        return {
+          title: 'Review submitted!',
+          message: 'Thank you for sharing your experience with the community!'
+        };
       default:
         return {
           title: 'Congratulations!',
