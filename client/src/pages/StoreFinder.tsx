@@ -6,6 +6,7 @@ import StoreCard from '@/components/StoreCard';
 import { Button } from '@/components/ui/button';
 import TutorialTooltip from '@/components/TutorialTooltip';
 import { useTutorial } from '@/contexts/TutorialContext';
+import { useCelebration } from '@/contexts/CelebrationContext';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -37,6 +38,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const { setStepForLocation } = useTutorial();
+  const { celebrateMilestone } = useCelebration();
   
   const [filters, setFilters] = useState<StoreFinderFilters>({
     useCurrentLocation: false,
@@ -236,6 +238,14 @@ const StoreFinder: FC<StoreFinderProps> = ({
   
   // Determine if we're showing results
   const isShowingResults = !isLoading && !isError && userLocation && sortedDispensaries.length > 0;
+  
+  // Effect to trigger celebration when dispensaries are found
+  useEffect(() => {
+    if (isShowingResults && sortedDispensaries.length > 0) {
+      // We found dispensaries! Celebrate!
+      celebrateMilestone('dispensary_found');
+    }
+  }, [isShowingResults, sortedDispensaries.length, celebrateMilestone]);
   
   return (
     <div>

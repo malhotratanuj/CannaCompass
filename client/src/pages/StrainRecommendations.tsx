@@ -210,7 +210,7 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
                 key={strain.id} 
                 strain={strain} 
                 selected={selectedStrains.some(s => s.id === strain.id)}
-                onSelect={onStrainSelect}
+                onSelect={handleStrainSelect}
                 onViewDetails={handleViewDetails}
               />
             ))}
