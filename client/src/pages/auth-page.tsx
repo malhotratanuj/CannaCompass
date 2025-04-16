@@ -56,7 +56,7 @@ export default function AuthPage() {
               <span className="mr-2">✓</span> Save your favorite strains
             </li>
             <li className="flex items-center">
-              <span className="mr-2">✓</span> Canadian market focused
+              <span className="mr-2">✓</span> Compare prices and availability
             </li>
           </ul>
         </div>
