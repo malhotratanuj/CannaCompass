@@ -148,6 +148,10 @@ function App() {
                         />
                       )} 
                     />
+                    <ProtectedRoute 
+                      path="/strains/:id" 
+                      component={StrainDetail} 
+                    />
                     <Route path="/auth" component={AuthPage} />
                     <Route component={NotFound} />
                   </Switch>

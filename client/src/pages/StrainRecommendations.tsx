@@ -94,8 +94,8 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
   };
 
   const handleViewDetails = (strain: Strain) => {
-    setSelectedStrainDetail(strain);
-    setShowDetailDialog(true);
+    // Navigate to the strain detail page instead of showing a dialog
+    setLocation(`/strains/${strain.id}`);
   };
 
   const handleSortChange = (value: string) => {

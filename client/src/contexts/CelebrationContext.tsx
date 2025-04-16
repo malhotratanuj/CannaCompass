@@ -10,10 +10,12 @@ export type MilestoneType =
   | 'strain_saved' 
   | 'dispensary_found'
   | 'tutorial_completed'
-  | 'preferences_saved';
+  | 'preferences_saved'
+  | 'review_submitted';
 
 export interface CelebrationContextType {
   celebrateMilestone: (milestone: MilestoneType) => void;
+  triggerCelebration: (milestone: MilestoneType) => void; // Alias for celebrateMilestone
   clearCelebration: () => void;
   activeMilestone: MilestoneType | null;
 }
@@ -64,6 +66,7 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
     <CelebrationContext.Provider
       value={{
         celebrateMilestone,
+        triggerCelebration: celebrateMilestone, // Alias for backward compatibility
         clearCelebration,
         activeMilestone
       }}

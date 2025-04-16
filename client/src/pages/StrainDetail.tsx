@@ -19,11 +19,14 @@ const StrainDetail: React.FC = () => {
 
   const { data, isLoading, error } = useQuery<{ strain: Strain }>({
     queryKey: [`/api/strains/${id}`],
-    onSuccess: (data) => {
-      // Check if this strain is saved
-      checkIfSaved(data.strain.id);
-    },
   });
+
+  // Check if strain is saved when data is loaded
+  React.useEffect(() => {
+    if (data?.strain) {
+      checkIfSaved(data.strain.id);
+    }
+  }, [data]);
 
   const saveMutation = useMutation({
     mutationFn: async (strainId: string) => {
@@ -37,7 +40,7 @@ const StrainDetail: React.FC = () => {
         title: 'Strain saved',
         description: 'This strain has been added to your saved strains.',
       });
-      triggerCelebration('strainSaved');
+      triggerCelebration('strain_saved');
     },
     onError: (error: Error) => {
       toast({
