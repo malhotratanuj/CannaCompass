@@ -2,6 +2,9 @@ import {
   users, User, InsertUser, 
   userPreferences, UserPreferences, InsertUserPreferences,
   savedStrains, SavedStrain, InsertSavedStrain,
+  strainReviews, StrainReview, InsertStrainReview, ReviewWithUser,
+  communityDiscussions, CommunityDiscussion, InsertCommunityDiscussion, DiscussionWithUser,
+  discussionComments, DiscussionComment, InsertDiscussionComment, CommentWithUser,
   Strain, Dispensary, UserLocation, RecommendationRequest
 } from "@shared/schema";
 import { strains } from "./strainData";
@@ -34,6 +37,30 @@ export interface IStorage {
   findNearbyDispensaries(location: UserLocation, radius: number): Promise<Dispensary[]>;
   getDispensaryById(dispensaryId: string): Promise<Dispensary | undefined>;
   
+  // Strain reviews
+  getStrainReviews(strainId: string): Promise<ReviewWithUser[]>;
+  getUserReviews(userId: number): Promise<StrainReview[]>;
+  getReviewById(reviewId: number): Promise<StrainReview | undefined>;
+  createReview(userId: number, review: InsertStrainReview): Promise<StrainReview>;
+  updateReview(reviewId: number, userId: number, review: Partial<InsertStrainReview>): Promise<StrainReview | undefined>;
+  deleteReview(reviewId: number, userId: number): Promise<boolean>;
+  
+  // Community discussions
+  getDiscussions(page?: number, limit?: number, tag?: string): Promise<DiscussionWithUser[]>;
+  getDiscussionById(discussionId: number): Promise<CommunityDiscussion | undefined>;
+  getUserDiscussions(userId: number): Promise<CommunityDiscussion[]>;
+  createDiscussion(userId: number, discussion: InsertCommunityDiscussion): Promise<CommunityDiscussion>;
+  updateDiscussion(discussionId: number, userId: number, discussion: Partial<InsertCommunityDiscussion>): Promise<CommunityDiscussion | undefined>;
+  deleteDiscussion(discussionId: number, userId: number): Promise<boolean>;
+  likeDiscussion(discussionId: number, userId: number): Promise<boolean>;
+  
+  // Discussion comments
+  getCommentsByDiscussion(discussionId: number): Promise<CommentWithUser[]>;
+  createComment(userId: number, comment: InsertDiscussionComment): Promise<DiscussionComment>;
+  updateComment(commentId: number, userId: number, content: string): Promise<DiscussionComment | undefined>;
+  deleteComment(commentId: number, userId: number): Promise<boolean>;
+  likeComment(commentId: number, userId: number): Promise<boolean>;
+  
   // Session store for authentication
   sessionStore: session.Store;
 }
@@ -46,6 +73,10 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private userPreferencesMap: Map<number, UserPreferences>;
   private savedStrainsMap: Map<number, SavedStrain[]>;
+  private strainReviewsMap: Map<string, StrainReview[]>; // Key is strainId
+  private reviewsMap: Map<number, StrainReview>; // Key is reviewId
+  private discussionsMap: Map<number, CommunityDiscussion>; // Key is discussionId
+  private discussionCommentsMap: Map<number, DiscussionComment[]>; // Key is discussionId
   currentId: number;
   sessionStore: session.Store;
 
@@ -53,6 +84,10 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.userPreferencesMap = new Map();
     this.savedStrainsMap = new Map();
+    this.strainReviewsMap = new Map();
+    this.reviewsMap = new Map();
+    this.discussionsMap = new Map();
+    this.discussionCommentsMap = new Map();
     this.currentId = 1;
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // prune expired entries every 24h
@@ -281,6 +316,362 @@ export class MemStorage implements IStorage {
 
   private toRadians(degrees: number): number {
     return degrees * Math.PI / 180;
+  }
+
+  // Strain reviews
+  async getStrainReviews(strainId: string): Promise<ReviewWithUser[]> {
+    const reviews = this.strainReviewsMap.get(strainId) || [];
+    
+    // Join with usernames
+    const reviewsWithUsers: ReviewWithUser[] = await Promise.all(
+      reviews.map(async (review) => {
+        const user = await this.getUser(review.userId);
+        return {
+          ...review,
+          username: user?.username || 'Unknown User'
+        };
+      })
+    );
+    
+    return reviewsWithUsers;
+  }
+  
+  async getUserReviews(userId: number): Promise<StrainReview[]> {
+    // Collect all reviews from all strains
+    const allReviews: StrainReview[] = [];
+    for (const reviews of this.strainReviewsMap.values()) {
+      allReviews.push(...reviews.filter(review => review.userId === userId));
+    }
+    return allReviews;
+  }
+  
+  async getReviewById(reviewId: number): Promise<StrainReview | undefined> {
+    return this.reviewsMap.get(reviewId);
+  }
+  
+  async createReview(userId: number, review: InsertStrainReview): Promise<StrainReview> {
+    const id = this.currentId++;
+    const now = new Date();
+    
+    const newReview: StrainReview = {
+      id,
+      userId,
+      strainId: review.strainId,
+      rating: review.rating,
+      title: review.title,
+      content: review.content,
+      effects: review.effects || [],
+      flavors: review.flavors || [],
+      wouldRecommend: review.wouldRecommend ?? true,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    // Add to strain reviews map
+    const strainReviews = this.strainReviewsMap.get(review.strainId) || [];
+    strainReviews.push(newReview);
+    this.strainReviewsMap.set(review.strainId, strainReviews);
+    
+    // Add to reviews map
+    this.reviewsMap.set(id, newReview);
+    
+    return newReview;
+  }
+  
+  async updateReview(reviewId: number, userId: number, reviewUpdates: Partial<InsertStrainReview>): Promise<StrainReview | undefined> {
+    const existingReview = this.reviewsMap.get(reviewId);
+    
+    // Check if review exists and belongs to the user
+    if (!existingReview || existingReview.userId !== userId) {
+      return undefined;
+    }
+    
+    // Update the review
+    const updatedReview: StrainReview = {
+      ...existingReview,
+      ...reviewUpdates,
+      updatedAt: new Date()
+    };
+    
+    // Update in reviews map
+    this.reviewsMap.set(reviewId, updatedReview);
+    
+    // Update in strain reviews map
+    const strainReviews = this.strainReviewsMap.get(existingReview.strainId) || [];
+    const updatedStrainReviews = strainReviews.map(review => 
+      review.id === reviewId ? updatedReview : review
+    );
+    this.strainReviewsMap.set(existingReview.strainId, updatedStrainReviews);
+    
+    return updatedReview;
+  }
+  
+  async deleteReview(reviewId: number, userId: number): Promise<boolean> {
+    const existingReview = this.reviewsMap.get(reviewId);
+    
+    // Check if review exists and belongs to the user
+    if (!existingReview || existingReview.userId !== userId) {
+      return false;
+    }
+    
+    // Remove from reviews map
+    this.reviewsMap.delete(reviewId);
+    
+    // Remove from strain reviews map
+    const strainReviews = this.strainReviewsMap.get(existingReview.strainId) || [];
+    const updatedStrainReviews = strainReviews.filter(review => review.id !== reviewId);
+    this.strainReviewsMap.set(existingReview.strainId, updatedStrainReviews);
+    
+    return true;
+  }
+  
+  // Community discussions
+  async getDiscussions(page = 1, limit = 10, tag?: string): Promise<DiscussionWithUser[]> {
+    let discussions = Array.from(this.discussionsMap.values());
+    
+    // Filter by tag if provided
+    if (tag) {
+      discussions = discussions.filter(discussion => 
+        discussion.tags && discussion.tags.includes(tag)
+      );
+    }
+    
+    // Sort by most recent
+    discussions.sort((a, b) => {
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+    
+    // Paginate
+    const startIndex = (page - 1) * limit;
+    const paginatedDiscussions = discussions.slice(startIndex, startIndex + limit);
+    
+    // Join with username and comment count
+    const discussionsWithUsers: DiscussionWithUser[] = await Promise.all(
+      paginatedDiscussions.map(async (discussion) => {
+        const user = await this.getUser(discussion.userId);
+        const comments = this.discussionCommentsMap.get(discussion.id) || [];
+        
+        return {
+          ...discussion,
+          username: user?.username || 'Unknown User',
+          commentCount: comments.length
+        };
+      })
+    );
+    
+    return discussionsWithUsers;
+  }
+  
+  async getDiscussionById(discussionId: number): Promise<CommunityDiscussion | undefined> {
+    return this.discussionsMap.get(discussionId);
+  }
+  
+  async getUserDiscussions(userId: number): Promise<CommunityDiscussion[]> {
+    return Array.from(this.discussionsMap.values())
+      .filter(discussion => discussion.userId === userId);
+  }
+  
+  async createDiscussion(userId: number, discussion: InsertCommunityDiscussion): Promise<CommunityDiscussion> {
+    const id = this.currentId++;
+    const now = new Date();
+    
+    const newDiscussion: CommunityDiscussion = {
+      id,
+      userId,
+      title: discussion.title,
+      content: discussion.content,
+      tags: discussion.tags || [],
+      likes: 0,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    this.discussionsMap.set(id, newDiscussion);
+    
+    return newDiscussion;
+  }
+  
+  async updateDiscussion(discussionId: number, userId: number, discussionUpdates: Partial<InsertCommunityDiscussion>): Promise<CommunityDiscussion | undefined> {
+    const existingDiscussion = this.discussionsMap.get(discussionId);
+    
+    // Check if discussion exists and belongs to the user
+    if (!existingDiscussion || existingDiscussion.userId !== userId) {
+      return undefined;
+    }
+    
+    // Update the discussion
+    const updatedDiscussion: CommunityDiscussion = {
+      ...existingDiscussion,
+      ...discussionUpdates,
+      updatedAt: new Date()
+    };
+    
+    this.discussionsMap.set(discussionId, updatedDiscussion);
+    
+    return updatedDiscussion;
+  }
+  
+  async deleteDiscussion(discussionId: number, userId: number): Promise<boolean> {
+    const existingDiscussion = this.discussionsMap.get(discussionId);
+    
+    // Check if discussion exists and belongs to the user
+    if (!existingDiscussion || existingDiscussion.userId !== userId) {
+      return false;
+    }
+    
+    // Remove the discussion
+    this.discussionsMap.delete(discussionId);
+    
+    // Remove associated comments
+    this.discussionCommentsMap.delete(discussionId);
+    
+    return true;
+  }
+  
+  async likeDiscussion(discussionId: number, userId: number): Promise<boolean> {
+    const existingDiscussion = this.discussionsMap.get(discussionId);
+    
+    if (!existingDiscussion) {
+      return false;
+    }
+    
+    // In a real implementation, we would check if the user has already liked the discussion
+    // and toggle accordingly. For simplicity in this in-memory version, we'll just increment.
+    
+    const updatedDiscussion: CommunityDiscussion = {
+      ...existingDiscussion,
+      likes: existingDiscussion.likes + 1
+    };
+    
+    this.discussionsMap.set(discussionId, updatedDiscussion);
+    
+    return true;
+  }
+  
+  // Discussion comments
+  async getCommentsByDiscussion(discussionId: number): Promise<CommentWithUser[]> {
+    const comments = this.discussionCommentsMap.get(discussionId) || [];
+    
+    // Join with username
+    const commentsWithUsers: CommentWithUser[] = await Promise.all(
+      comments.map(async (comment) => {
+        const user = await this.getUser(comment.userId);
+        return {
+          ...comment,
+          username: user?.username || 'Unknown User'
+        };
+      })
+    );
+    
+    // Sort by creation date (oldest first)
+    commentsWithUsers.sort((a, b) => {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+    
+    return commentsWithUsers;
+  }
+  
+  async createComment(userId: number, comment: InsertDiscussionComment): Promise<DiscussionComment> {
+    const id = this.currentId++;
+    const now = new Date();
+    
+    const newComment: DiscussionComment = {
+      id,
+      discussionId: comment.discussionId,
+      userId,
+      content: comment.content,
+      likes: 0,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    // Add to comments map
+    const discussionComments = this.discussionCommentsMap.get(comment.discussionId) || [];
+    discussionComments.push(newComment);
+    this.discussionCommentsMap.set(comment.discussionId, discussionComments);
+    
+    return newComment;
+  }
+  
+  async updateComment(commentId: number, userId: number, content: string): Promise<DiscussionComment | undefined> {
+    // Find the comment in all discussions
+    for (const [discussionId, comments] of this.discussionCommentsMap.entries()) {
+      const commentIndex = comments.findIndex(c => c.id === commentId);
+      
+      if (commentIndex !== -1) {
+        const comment = comments[commentIndex];
+        
+        // Check if comment belongs to the user
+        if (comment.userId !== userId) {
+          return undefined;
+        }
+        
+        // Update the comment
+        const updatedComment: DiscussionComment = {
+          ...comment,
+          content,
+          updatedAt: new Date()
+        };
+        
+        // Update in the array
+        comments[commentIndex] = updatedComment;
+        this.discussionCommentsMap.set(discussionId, comments);
+        
+        return updatedComment;
+      }
+    }
+    
+    return undefined;
+  }
+  
+  async deleteComment(commentId: number, userId: number): Promise<boolean> {
+    // Find the comment in all discussions
+    for (const [discussionId, comments] of this.discussionCommentsMap.entries()) {
+      const comment = comments.find(c => c.id === commentId);
+      
+      if (comment) {
+        // Check if comment belongs to the user
+        if (comment.userId !== userId) {
+          return false;
+        }
+        
+        // Remove the comment
+        const updatedComments = comments.filter(c => c.id !== commentId);
+        this.discussionCommentsMap.set(discussionId, updatedComments);
+        
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  async likeComment(commentId: number, userId: number): Promise<boolean> {
+    // Find the comment in all discussions
+    for (const [discussionId, comments] of this.discussionCommentsMap.entries()) {
+      const commentIndex = comments.findIndex(c => c.id === commentId);
+      
+      if (commentIndex !== -1) {
+        const comment = comments[commentIndex];
+        
+        // In a real implementation, we would check if the user has already liked the comment
+        // and toggle accordingly. For simplicity in this in-memory version, we'll just increment.
+        
+        // Update the comment
+        const updatedComment: DiscussionComment = {
+          ...comment,
+          likes: comment.likes + 1
+        };
+        
+        // Update in the array
+        comments[commentIndex] = updatedComment;
+        this.discussionCommentsMap.set(discussionId, comments);
+        
+        return true;
+      }
+    }
+    
+    return false;
   }
 }
 

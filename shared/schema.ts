@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -25,6 +25,44 @@ export const savedStrains = pgTable("saved_strains", {
   savedAt: text("saved_at").notNull(),
 });
 
+// Strain reviews schema
+export const strainReviews = pgTable("strain_reviews", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  strainId: text("strain_id").notNull(),
+  rating: integer("rating").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  effects: text("effects").array(),
+  flavors: text("flavors").array(),
+  wouldRecommend: boolean("would_recommend").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Community discussions schema
+export const communityDiscussions = pgTable("community_discussions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  tags: text("tags").array(),
+  likes: integer("likes").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Discussion comments schema
+export const discussionComments = pgTable("discussion_comments", {
+  id: serial("id").primaryKey(),
+  discussionId: integer("discussion_id").references(() => communityDiscussions.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  likes: integer("likes").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -40,12 +78,41 @@ export const savedStrainSchema = createInsertSchema(savedStrains).omit({
   userId: true,
 });
 
+export const strainReviewSchema = createInsertSchema(strainReviews).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const communityDiscussionSchema = createInsertSchema(communityDiscussions).omit({
+  id: true,
+  userId: true,
+  likes: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const discussionCommentSchema = createInsertSchema(discussionComments).omit({
+  id: true,
+  userId: true,
+  likes: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type InsertUserPreferences = z.infer<typeof userPreferencesSchema>;
 export type SavedStrain = typeof savedStrains.$inferSelect;
 export type InsertSavedStrain = z.infer<typeof savedStrainSchema>;
+export type StrainReview = typeof strainReviews.$inferSelect;
+export type InsertStrainReview = z.infer<typeof strainReviewSchema>;
+export type CommunityDiscussion = typeof communityDiscussions.$inferSelect;
+export type InsertCommunityDiscussion = z.infer<typeof communityDiscussionSchema>;
+export type DiscussionComment = typeof discussionComments.$inferSelect;
+export type InsertDiscussionComment = z.infer<typeof discussionCommentSchema>;
 
 export interface Strain {
   id: string;
@@ -101,4 +168,20 @@ export interface RecommendationRequest {
   effects?: string[];
   flavors?: string[];
   consumptionMethod?: string[];
+}
+
+// Review with user info
+export interface ReviewWithUser extends StrainReview {
+  username: string;
+}
+
+// Discussion with user info
+export interface DiscussionWithUser extends CommunityDiscussion {
+  username: string;
+  commentCount: number;
+}
+
+// Comment with user info
+export interface CommentWithUser extends DiscussionComment {
+  username: string;
 }
