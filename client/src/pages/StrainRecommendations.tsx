@@ -6,6 +6,7 @@ import StrainCard from '@/components/StrainCard';
 import { Button } from '@/components/ui/button';
 import TutorialTooltip from '@/components/TutorialTooltip';
 import { useTutorial } from '@/contexts/TutorialContext';
+import { useCelebration } from '@/contexts/CelebrationContext';
 import {
   Select,
   SelectContent,
@@ -50,6 +51,19 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
   const [sortOption, setSortOption] = useState<string>('relevance');
   const [showDetailDialog, setShowDetailDialog] = useState<boolean>(false);
   const [selectedStrainDetail, setSelectedStrainDetail] = useState<Strain | null>(null);
+  const { celebrateMilestone } = useCelebration();
+  
+  // Custom handler to wrap the original strain select function and add celebration
+  const handleStrainSelect = (strain: Strain) => {
+    // If this is the first strain selection (adding, not removing)
+    if (!selectedStrains.some(s => s.id === strain.id) && selectedStrains.length === 0) {
+      // Trigger celebration for first strain selection
+      celebrateMilestone('strain_selected');
+    }
+    
+    // Call the original function
+    onStrainSelect(strain);
+  };
 
   // Query to get strain recommendations
   const { data, isLoading, isError, error } = useQuery({
@@ -314,7 +328,7 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
             
             <DialogFooter>
               <Button
-                onClick={() => onStrainSelect(selectedStrainDetail)}
+                onClick={() => handleStrainSelect(selectedStrainDetail)}
                 className="w-full sm:w-auto"
               >
                 {selectedStrains.some(s => s.id === selectedStrainDetail.id) 
