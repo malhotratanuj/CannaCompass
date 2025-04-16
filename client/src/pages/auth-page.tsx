@@ -10,8 +10,9 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { insertUserSchema } from "@shared/schema";
 import { Redirect } from "wouter";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { useCelebration } from "@/contexts/CelebrationContext";
+import { useState } from "react";
 
 // Create the zod schemas for login and registration
 const loginSchema = z.object({
@@ -103,6 +104,7 @@ export default function AuthPage() {
 }
 
 function LoginForm({ onSubmit, isLoading }: { onSubmit: (values: LoginFormValues) => void, isLoading: boolean }) {
+  const [loginError, setLoginError] = useState<string | null>(null);
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -111,9 +113,25 @@ function LoginForm({ onSubmit, isLoading }: { onSubmit: (values: LoginFormValues
     },
   });
 
+  const handleSubmit = async (values: LoginFormValues) => {
+    setLoginError(null);
+    try {
+      await onSubmit(values);
+    } catch (error) {
+      setLoginError("Invalid username or password. Please try again.");
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {loginError && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4 flex items-start">
+            <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
+            <span className="text-amber-800 text-sm">{loginError}</span>
+          </div>
+        )}
+        
         <FormField
           control={form.control}
           name="username"
@@ -157,6 +175,7 @@ function LoginForm({ onSubmit, isLoading }: { onSubmit: (values: LoginFormValues
 }
 
 function RegisterForm({ onSubmit, isLoading }: { onSubmit: (values: RegisterFormValues) => void, isLoading: boolean }) {
+  const [registerError, setRegisterError] = useState<string | null>(null);
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -166,9 +185,25 @@ function RegisterForm({ onSubmit, isLoading }: { onSubmit: (values: RegisterForm
     },
   });
 
+  const handleSubmit = async (values: RegisterFormValues) => {
+    setRegisterError(null);
+    try {
+      await onSubmit(values);
+    } catch (error) {
+      setRegisterError("This username is already taken. Please choose another one.");
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {registerError && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4 flex items-start">
+            <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
+            <span className="text-amber-800 text-sm">{registerError}</span>
+          </div>
+        )}
+      
         <FormField
           control={form.control}
           name="username"
