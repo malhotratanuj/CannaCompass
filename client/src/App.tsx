@@ -6,6 +6,7 @@ import MoodSelection from "@/pages/MoodSelection";
 import EffectsPreferences from "@/pages/EffectsPreferences";
 import StrainRecommendations from "@/pages/StrainRecommendations";
 import StoreFinder from "@/pages/StoreFinder";
+import AuthPage from "@/pages/auth-page";
 import { useState, useEffect } from "react";
 import { RecommendationRequest, Strain } from "@shared/schema";
 import Header from "@/components/Header";
@@ -13,6 +14,9 @@ import Footer from "@/components/Footer";
 import PrivacyConsent from "@/components/PrivacyConsent";
 import WelcomeModal from "@/components/WelcomeModal";
 import { TutorialProvider } from "@/contexts/TutorialContext";
+import { ProtectedRoute } from "@/lib/protected-route";
+import { AuthProvider } from "@/hooks/use-auth";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 function App() {
   const [location] = useLocation();
@@ -74,72 +78,97 @@ function App() {
     }
   };
 
-  return (
-    <TutorialProvider>
-      <div className="min-h-screen flex flex-col bg-gray-50 text-gray-900">
-        <Header />
-        
-        <main className="flex-grow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <Switch>
-              <Route path="/">
-                <Home onGetStarted={() => setCurrentStep(1)} />
-              </Route>
-              <Route path="/mood-selection">
-                <MoodSelection 
-                  currentStep={currentStep}
-                  onStepChange={handleStepChange}
-                  preferences={userPreferences}
-                  updatePreferences={updatePreferences}
-                />
-              </Route>
-              <Route path="/effects-preferences">
-                <EffectsPreferences 
-                  currentStep={currentStep}
-                  onStepChange={handleStepChange}
-                  preferences={userPreferences}
-                  updatePreferences={updatePreferences}
-                />
-              </Route>
-              <Route path="/recommendations">
-                <StrainRecommendations 
-                  currentStep={currentStep}
-                  onStepChange={handleStepChange}
-                  preferences={userPreferences}
-                  recommendedStrains={recommendedStrains}
-                  setRecommendedStrains={setRecommendedStrains}
-                  selectedStrains={selectedStrains}
-                  onStrainSelect={handleStrainSelect}
-                />
-              </Route>
-              <Route path="/store-finder">
-                <StoreFinder 
-                  currentStep={currentStep}
-                  onStepChange={handleStepChange}
-                  selectedStrains={selectedStrains}
-                />
-              </Route>
-              <Route component={NotFound} />
-            </Switch>
-          </div>
-        </main>
-        
-        <Footer />
-        <Toaster />
-        
-        {showPrivacyConsent && (
-          <PrivacyConsent 
-            onAccept={() => setShowPrivacyConsent(false)}
-            onCustomize={() => setShowPrivacyConsent(false)}
-          />
-        )}
+  // Create a new QueryClient instance
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: 1,
+        refetchOnWindowFocus: false,
+      },
+    },
+  });
 
-        <WelcomeModal 
-          isOpen={showWelcomeModal}
-          onClose={() => setShowWelcomeModal(false)}
-        />
-      </div>
-    </TutorialProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TutorialProvider>
+          <div className="min-h-screen flex flex-col bg-gray-50 text-gray-900">
+            <Header />
+            
+            <main className="flex-grow">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <Switch>
+                  <ProtectedRoute path="/" component={() => <Home onGetStarted={() => setCurrentStep(1)} />} />
+                  <ProtectedRoute 
+                    path="/mood-selection" 
+                    component={() => (
+                      <MoodSelection 
+                        currentStep={currentStep}
+                        onStepChange={handleStepChange}
+                        preferences={userPreferences}
+                        updatePreferences={updatePreferences}
+                      />
+                    )} 
+                  />
+                  <ProtectedRoute 
+                    path="/effects-preferences" 
+                    component={() => (
+                      <EffectsPreferences 
+                        currentStep={currentStep}
+                        onStepChange={handleStepChange}
+                        preferences={userPreferences}
+                        updatePreferences={updatePreferences}
+                      />
+                    )} 
+                  />
+                  <ProtectedRoute 
+                    path="/recommendations" 
+                    component={() => (
+                      <StrainRecommendations 
+                        currentStep={currentStep}
+                        onStepChange={handleStepChange}
+                        preferences={userPreferences}
+                        recommendedStrains={recommendedStrains}
+                        setRecommendedStrains={setRecommendedStrains}
+                        selectedStrains={selectedStrains}
+                        onStrainSelect={handleStrainSelect}
+                      />
+                    )} 
+                  />
+                  <ProtectedRoute 
+                    path="/store-finder" 
+                    component={() => (
+                      <StoreFinder 
+                        currentStep={currentStep}
+                        onStepChange={handleStepChange}
+                        selectedStrains={selectedStrains}
+                      />
+                    )} 
+                  />
+                  <Route path="/auth" component={AuthPage} />
+                  <Route component={NotFound} />
+                </Switch>
+              </div>
+            </main>
+            
+            <Footer />
+            <Toaster />
+            
+            {showPrivacyConsent && (
+              <PrivacyConsent 
+                onAccept={() => setShowPrivacyConsent(false)}
+                onCustomize={() => setShowPrivacyConsent(false)}
+              />
+            )}
+
+            <WelcomeModal 
+              isOpen={showWelcomeModal}
+              onClose={() => setShowWelcomeModal(false)}
+            />
+          </div>
+        </TutorialProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
