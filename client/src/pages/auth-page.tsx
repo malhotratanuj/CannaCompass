@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { insertUserSchema } from "@shared/schema";
 import { Redirect } from "wouter";
 import { Loader2 } from "lucide-react";
+import { useCelebration } from "@/contexts/CelebrationContext";
 
 // Create the zod schemas for login and registration
 const loginSchema = z.object({
@@ -30,9 +31,22 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
+  const { celebrateMilestone } = useCelebration();
 
   // If user is already logged in, redirect to home page
   if (user) {
+    // Trigger celebration if it's the first login from this session
+    const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true';
+    const justRegistered = sessionStorage.getItem('justRegistered') === 'true';
+    
+    if (justRegistered) {
+      celebrateMilestone('account_created');
+      sessionStorage.removeItem('justRegistered');
+    } else if (justLoggedIn) {
+      celebrateMilestone('first_login');
+      sessionStorage.removeItem('justLoggedIn');
+    }
+    
     return <Redirect to="/" />;
   }
 
