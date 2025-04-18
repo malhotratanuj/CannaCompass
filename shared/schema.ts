@@ -118,7 +118,7 @@ export interface Strain {
   id: string;
   name: string;
   breeder: string;
-  type: 'Indica' | 'Sativa' | 'Hybrid';
+  type: 'Indica' | 'Sativa' | 'Hybrid' | 'Sativa-dominant' | 'Indica-dominant';
   thcContent: string;
   cbdContent: string;
   terpenes: string[];

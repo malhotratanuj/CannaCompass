@@ -98,7 +98,8 @@ export class AIRecommender {
       });
 
       // Parse the AI response
-      const result = JSON.parse(response.choices[0].message.content) as AIRecommendationResult;
+      const content = response.choices[0].message.content || '{"recommendations":[], "reasons":{}}';
+      const result = JSON.parse(content) as AIRecommendationResult;
       console.log(`AI recommended ${result.recommendations.length} strains`);
       
       // Get the full strain objects for the recommended IDs
