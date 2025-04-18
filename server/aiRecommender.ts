@@ -15,6 +15,9 @@ const OPENAI_MODEL = "gpt-4o";
 interface AIRecommendationResult {
   recommendations: string[]; // IDs of recommended strains
   reasons: { [strainId: string]: string }; // Reasons for each recommendation
+  perfect_match_score: { [strainId: string]: number }; // How well each strain matches (0-100)
+  usage_tips: { [strainId: string]: string }; // Usage tips for each strain
+  effects_explanation: { [strainId: string]: string }; // Detailed explanation of likely effects
 }
 
 export class AIRecommender {
@@ -72,9 +75,18 @@ export class AIRecommender {
         messages: [
           {
             role: "system",
-            content: `You are an expert cannabis strain recommender. Your task is to recommend the best cannabis strains based on user preferences. 
-            You'll receive information about the user's preferences and a list of candidate strains. 
-            Select the top strains (up to 6) that best match the user's preferences and provide a brief explanation for each recommendation.`
+            content: `You are an expert cannabis strain recommender with extensive knowledge about cannabis strains, their effects, optimal usage, and therapeutic applications. 
+            Your task is to recommend the best cannabis strains based on user preferences.
+            
+            You'll analyze the user's preferences in detail, considering mood, desired effects, experience level, consumption method, time of day, and other contextual factors.
+            
+            For each recommendation, provide:
+            1. A personalized explanation of why this strain matches the user's needs
+            2. A match score (0-100) indicating how well this strain aligns with preferences
+            3. Practical usage tips considering consumption method, dosage advice based on experience level, and optimal times/settings
+            4. A detailed breakdown of the effects they're likely to experience, both physiological and psychological
+            
+            Your recommendations should be evidence-based, practical, and tailored to the individual's specific needs.`
           },
           {
             role: "user",
@@ -89,8 +101,13 @@ export class AIRecommender {
             Return your recommendations as a JSON object with this format:
             {
               "recommendations": ["strain_id1", "strain_id2", ...], 
-              "reasons": {"strain_id1": "reason", "strain_id2": "reason", ...}
-            }`
+              "reasons": {"strain_id1": "detailed explanation", "strain_id2": "detailed explanation", ...},
+              "perfect_match_score": {"strain_id1": score, "strain_id2": score, ...},
+              "usage_tips": {"strain_id1": "practical advice", "strain_id2": "practical advice", ...},
+              "effects_explanation": {"strain_id1": "detailed effects breakdown", "strain_id2": "detailed effects breakdown", ...}
+            }
+            
+            Limit to 5 recommendations, prioritizing quality matches over quantity. Score each strain honestly - not all strains will be perfect matches.`
           }
         ],
         response_format: { type: "json_object" },

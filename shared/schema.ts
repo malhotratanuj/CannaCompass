@@ -128,6 +128,11 @@ export interface Strain {
   reviewCount: number;
   description: string;
   imageUrl: string;
+  // AI-generated recommendation information
+  matchReason?: string;          // Personalized reason for this recommendation
+  matchScore?: number;           // How well this strain matches preferences (0-100)
+  usageTips?: string;            // Practical usage tips
+  effectsExplanation?: string;   // Detailed breakdown of expected effects
 }
 
 export interface Dispensary {

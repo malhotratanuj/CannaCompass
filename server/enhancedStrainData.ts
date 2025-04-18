@@ -325,16 +325,62 @@ export const enhancedStrains: Strain[] = [
 // Create vectors for each strain based on effects, flavors, and type
 export const strainVectors: { [id: string]: number[] } = {};
 
-// This would be replaced with actual vector embeddings in a production environment
-// For now, we're using a simple placeholder structure
+// This generates simplified but more meaningful vectors based on strain properties
 export function initializeVectors() {
-  console.log("Initializing strain vectors");
+  console.log("Initializing strain vectors with semantic features");
   
+  // Define our feature dimensions
+  const effects = ['Relaxing', 'Energetic', 'Creative', 'Focused', 'Sleepy', 'Euphoric', 'Happy', 'Uplifting', 'Pain Relief', 'Calming'];
+  const flavors = ['Citrus', 'Sweet', 'Earthy', 'Berry', 'Pine', 'Woody', 'Spicy', 'Tropical', 'Grape', 'Floral'];
+  const types = ['Indica', 'Sativa', 'Hybrid'];
+  
+  // For each strain, create a vector with dimensions representing these features
   enhancedStrains.forEach(strain => {
-    // In a real implementation, we would use embeddings API to create these vectors
-    // For now, we're using placeholder to conceptualize the approach
-    strainVectors[strain.id] = [Math.random(), Math.random(), Math.random()];
+    // Create a vector of zeros with the right dimensions
+    const vectorLength = effects.length + flavors.length + types.length;
+    const vector = new Array(vectorLength).fill(0);
+    
+    // Set type features (one-hot encoding)
+    if (strain.type.includes('Indica')) {
+      vector[effects.length + flavors.length] = 1;
+    } else if (strain.type.includes('Sativa')) {
+      vector[effects.length + flavors.length + 1] = 1;
+    } else { // Hybrid
+      vector[effects.length + flavors.length + 2] = 1;
+    }
+    
+    // Set effect features
+    strain.effects.forEach(effect => {
+      const effectIndex = effects.findIndex(e => 
+        effect.toLowerCase().includes(e.toLowerCase()) || 
+        e.toLowerCase().includes(effect.toLowerCase())
+      );
+      if (effectIndex >= 0) {
+        vector[effectIndex] = 1;
+      }
+    });
+    
+    // Set flavor features
+    strain.flavors.forEach(flavor => {
+      const flavorIndex = flavors.findIndex(f => 
+        flavor.toLowerCase().includes(f.toLowerCase()) || 
+        f.toLowerCase().includes(flavor.toLowerCase())
+      );
+      if (flavorIndex >= 0) {
+        vector[effects.length + flavorIndex] = 1;
+      }
+    });
+    
+    // Normalize the vector to unit length for better cosine similarity
+    const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+    if (magnitude > 0) {
+      for (let i = 0; i < vector.length; i++) {
+        vector[i] = vector[i] / magnitude;
+      }
+    }
+    
+    strainVectors[strain.id] = vector;
   });
   
-  console.log(`Vectors created for ${Object.keys(strainVectors).length} strains`);
+  console.log(`Semantic vectors created for ${Object.keys(strainVectors).length} strains`);
 }
