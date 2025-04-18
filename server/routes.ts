@@ -96,9 +96,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Debug: log the first recommendation if available
       if (recommendations.length > 0) {
         console.log("First recommendation:", recommendations[0].name);
+        
+        // Debug log to verify if our recommendations have the enhanced attributes
+        if (recommendations[0].matchScore !== undefined) {
+          console.log("Enhanced recommendation data is present. Match score:", recommendations[0].matchScore);
+        } else {
+          console.log("Enhanced recommendation data is missing! Check the implementation.");
+        }
       }
       
-      return res.json({ recommendations });
+      // Return the raw array of strain recommendations instead of nesting them in an object
+      return res.json(recommendations);
     } catch (error) {
       console.error("Error getting recommendations:", error);
       return res.status(500).json({ message: "Failed to get strain recommendations" });
