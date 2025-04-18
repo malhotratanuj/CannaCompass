@@ -137,19 +137,28 @@ export class DatabaseStorage implements IStorage {
     try {
       // Use the AI recommender for more advanced recommendations
       console.log("Using AI Recommender for strain recommendations");
-      const aiRecommendations = await aiRecommender.getRecommendations(preferences);
       
-      if (aiRecommendations && aiRecommendations.length > 0) {
-        console.log(`Got ${aiRecommendations.length} AI-powered recommendations`);
-        return aiRecommendations;
+      // The aiRecommender now handles both AI-generated and fallback recommendations
+      // and adds the enhanced strain information in both cases
+      const recommendations = await aiRecommender.getRecommendations(preferences);
+      
+      console.log(`Got ${recommendations.length} recommendations`);
+      
+      // Debug: Check if our recommendations have the enhanced attributes
+      if (recommendations.length > 0) {
+        if (recommendations[0].matchScore !== undefined) {
+          console.log("Enhanced recommendation data is present. Match score:", recommendations[0].matchScore);
+        } else {
+          console.log("Enhanced recommendation data is missing! Check the implementation.");
+        }
       }
       
-      // Fallback to traditional recommendation system if AI fails
-      console.log("Falling back to traditional recommendation system");
-      return this.getTraditionalRecommendations(preferences);
+      return recommendations;
     } catch (error) {
-      console.error("Error getting AI recommendations:", error);
-      return this.getTraditionalRecommendations(preferences);
+      console.error("Error getting recommendations:", error);
+      
+      // In case of a complete failure, use basic strain data
+      return enhancedStrains.slice(0, 5);
     }
   }
   

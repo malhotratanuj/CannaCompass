@@ -191,8 +191,8 @@ export class AIRecommender {
       return sortedStrains.slice(0, 5);
     } catch (error) {
       console.error("Error in OpenAI recommendation:", error);
-      // Return candidate strains as fallback
-      return candidateStrains.slice(0, 6);
+      // Use our enhanced fallback system instead of just returning candidate strains
+      return this.getFallbackRecommendations(preferences);
     }
   }
 
