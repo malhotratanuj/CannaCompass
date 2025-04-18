@@ -28,13 +28,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await vectorDb.initialize();
       
       const enhancedStrainCount = enhancedStrains.length;
+      const originalStrainCount = strains.length;
       const vectorDbInitialized = true; // We've just initialized it above
+      
+      // Check the current strain arrays
+      console.log(`Enhanced strains: ${enhancedStrainCount}, Original strains: ${originalStrainCount}`);
+      console.log(`First enhanced strain: ${enhancedStrains[0]?.name}`);
       
       res.json({
         status: "healthy",
         aiRecommenderReady: true,
         vectorDbInitialized,
         enhancedStrainCount,
+        originalStrainCount,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -44,6 +50,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: "Failed to verify AI system status",
         timestamp: new Date().toISOString()
       });
+    }
+  });
+  
+  // Special diagnostic endpoint to get strain counts
+  app.get("/api/debug/strains", async (_req: Request, res: Response) => {
+    try {
+      const allStrains = await storage.getAllStrains();
+      const firstStrain = allStrains.length > 0 ? allStrains[0] : null;
+      
+      res.json({
+        enhancedStrainCount: enhancedStrains.length,
+        originalStrainCount: strains.length,
+        returnedStrainCount: allStrains.length,
+        firstStrain: firstStrain ? {
+          id: firstStrain.id,
+          name: firstStrain.name,
+          type: firstStrain.type
+        } : null
+      });
+    } catch (error) {
+      console.error("Error in debug endpoint:", error);
+      res.status(500).json({ error: "Failed to fetch debug info" });
     }
   });
   
