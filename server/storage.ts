@@ -8,7 +8,10 @@ import {
   Strain, Dispensary, UserLocation, RecommendationRequest
 } from "@shared/schema";
 import { strains } from "./strainData";
+import { enhancedStrains } from "./enhancedStrainData";
 import { dispensaries } from "./dispensaryData";
+import { vectorDb } from "./vectorDb";
+import { aiRecommender } from "./aiRecommender";
 
 import session from "express-session";
 
@@ -160,10 +163,36 @@ export class MemStorage implements IStorage {
     this.savedStrainsMap.set(userId, updatedStrains);
   }
 
-  // Strain recommendations
+  // Strain recommendations using AI
   async getStrainRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
-    // Enhanced recommendation algorithm based on mood and filters
-    let filteredStrains = strains;
+    try {
+      console.log("Using AI-enhanced recommendation system...");
+      // Initialize vector database if needed
+      await vectorDb.initialize();
+      
+      // Use the AI recommender to get personalized strain recommendations
+      const recommendations = await aiRecommender.getRecommendations(preferences);
+      
+      console.log(`AI recommender returned ${recommendations.length} strains`);
+      
+      if (recommendations.length > 0) {
+        return recommendations;
+      }
+      
+      // If AI recommender fails or returns no results, fall back to traditional method
+      console.log("Falling back to traditional recommendation method");
+      return this.getTraditionalRecommendations(preferences);
+    } catch (error) {
+      console.error("Error in AI recommendation:", error);
+      // Fall back to traditional method if there's an error
+      return this.getTraditionalRecommendations(preferences);
+    }
+  }
+  
+  // Traditional recommendation algorithm as fallback
+  private async getTraditionalRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
+    console.log("Using traditional recommendation algorithm");
+    let filteredStrains = enhancedStrains; // Use the expanded dataset
     
     // Define our effect mapping to handle variations of the same effect
     const effectMapping: Record<string, string[]> = {
@@ -200,49 +229,23 @@ export class MemStorage implements IStorage {
              targetEffect.toLowerCase().includes(actualEffect.toLowerCase());
     };
     
-    // Filter by mood with expanded effect mappings to catch more strains
-    const moodEffectMap: Record<string, string[]> = {
-      'relaxed': ['Relaxing', 'Calming', 'Peaceful', 'Relaxation', 'Stress Relief', 'Pain Relief'],
-      'energetic': ['Energetic', 'Uplifting', 'Active', 'Energy', 'Social Uplift'],
-      'creative': ['Creative', 'Inspired', 'Creativity', 'Euphoric'],
-      'focused': ['Focused', 'Clear-headed', 'Productive', 'Focus', 'Clear'],
-      'sleepy': ['Sleepy', 'Sedative', 'Restful', 'Sleep Aid', 'Relaxing'],
-      'happy': ['Happy', 'Euphoric', 'Giggly', 'Euphoria', 'Uplifting']
-    };
-    
-    // Add secondary effect mappings (strains with these effects may partially satisfy the mood)
-    const secondaryMoodEffects: Record<string, string[]> = {
-      'relaxed': ['Happy', 'Pain Relief'],
-      'energetic': ['Happy', 'Euphoric', 'Focus'],
-      'creative': ['Happy', 'Uplifting', 'Energetic'],
-      'focused': ['Uplifting', 'Energy', 'Creativity'],
-      'sleepy': ['Pain Relief', 'Calming'],
-      'happy': ['Relaxing', 'Creative', 'Social Uplift']
-    };
-    
-    // Only filter by mood if a mood is selected
+    // Filter by mood with expanded effect mappings
     if (preferences.mood && preferences.mood.toLowerCase() !== '') {
-      const primaryDesiredEffects = moodEffectMap[preferences.mood.toLowerCase()] || [];
-      const secondaryDesiredEffects = secondaryMoodEffects[preferences.mood.toLowerCase()] || [];
+      const moodEffectMap: Record<string, string[]> = {
+        'relaxed': ['Relaxing', 'Calming', 'Peaceful', 'Relaxation', 'Stress Relief', 'Pain Relief'],
+        'energetic': ['Energetic', 'Uplifting', 'Active', 'Energy', 'Social Uplift'],
+        'creative': ['Creative', 'Inspired', 'Creativity', 'Euphoric'],
+        'focused': ['Focused', 'Clear-headed', 'Productive', 'Focus', 'Clear'],
+        'sleepy': ['Sleepy', 'Sedative', 'Restful', 'Sleep Aid', 'Relaxing'],
+        'happy': ['Happy', 'Euphoric', 'Giggly', 'Euphoria', 'Uplifting']
+      };
       
-      // First, try to match with primary effects
-      let primaryMatches = filteredStrains.filter(strain => 
-        strain.effects.some(effect => 
-          primaryDesiredEffects.some(desiredEffect => 
-            matchEffectWithVariations(desiredEffect, effect)
-          )
-        )
-      );
+      const desiredEffects = moodEffectMap[preferences.mood.toLowerCase()] || [];
       
-      // If we have enough primary matches, use those
-      if (primaryMatches.length >= 3) {
-        filteredStrains = primaryMatches;
-      } 
-      // Otherwise, include secondary matches as well
-      else {
+      if (desiredEffects.length > 0) {
         filteredStrains = filteredStrains.filter(strain => 
           strain.effects.some(effect => 
-            primaryDesiredEffects.concat(secondaryDesiredEffects).some(desiredEffect => 
+            desiredEffects.some(desiredEffect => 
               matchEffectWithVariations(desiredEffect, effect)
             )
           )
@@ -250,14 +253,8 @@ export class MemStorage implements IStorage {
       }
     }
     
-    // Debug logging
-    console.log(`After mood filtering: ${filteredStrains.length} strains`);
-    
     // Filter by additional effects if specified
     if (preferences.effects && preferences.effects.length > 0) {
-      console.log(`Filtering by effects: ${preferences.effects.join(', ')}`);
-      
-      const beforeCount = filteredStrains.length;
       const matchedStrains = filteredStrains.filter(strain => 
         preferences.effects!.some(requestedEffect => 
           strain.effects.some(strainEffect => 
@@ -266,31 +263,24 @@ export class MemStorage implements IStorage {
         )
       );
       
-      console.log(`Effect filtering results: ${matchedStrains.length} strains matched (from ${beforeCount})`);
-      
       if (matchedStrains.length > 0) {
         filteredStrains = matchedStrains;
-      } else {
-        console.log(`No strains match the effect filters: ${preferences.effects.join(', ')}. Using most relevant strains.`);
-        // If no strains match the effects, we'll keep the mood-filtered strains
       }
-    }
-    
-    // If no strains were found after all filtering, return a default set
-    if (filteredStrains.length === 0) {
-      console.log("No matching strains found after all filtering, using default set");
-      return strains.slice(0, 4);
     }
     
     // Filter by flavors if specified
     if (preferences.flavors && preferences.flavors.length > 0) {
-      filteredStrains = filteredStrains.filter(strain => 
+      const flavorMatches = filteredStrains.filter(strain => 
         preferences.flavors!.some(flavor => 
           strain.flavors.some(strainFlavor => 
             strainFlavor.toLowerCase().includes(flavor.toLowerCase())
           )
         )
       );
+      
+      if (flavorMatches.length > 0) {
+        filteredStrains = flavorMatches;
+      }
     }
     
     // Adjust based on experience level
@@ -306,6 +296,14 @@ export class MemStorage implements IStorage {
       });
     }
     
+    // If no strains were found after all filtering, return some default ones
+    if (filteredStrains.length === 0) {
+      console.log("No matching strains found, using default set");
+      return enhancedStrains
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 6);
+    }
+    
     // Return top results, sorted by relevance (for now, just by rating)
     return filteredStrains
       .sort((a, b) => b.rating - a.rating)
@@ -313,11 +311,19 @@ export class MemStorage implements IStorage {
   }
 
   async getStrainById(strainId: string): Promise<Strain | undefined> {
+    // Look in enhanced strains first
+    const enhancedStrain = enhancedStrains.find(strain => strain.id === strainId);
+    if (enhancedStrain) {
+      return enhancedStrain;
+    }
+    
+    // Fall back to original strains if not found
     return strains.find(strain => strain.id === strainId);
   }
 
   async getAllStrains(): Promise<Strain[]> {
-    return strains;
+    // Use the expanded dataset for better recommendations
+    return enhancedStrains;
   }
 
   // Dispensary finder
