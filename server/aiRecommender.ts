@@ -199,6 +199,7 @@ export class AIRecommender {
   // Enhanced fallback recommendation logic with basic explanations
   private getFallbackRecommendations(preferences: RecommendationRequest): Strain[] {
     console.log("Using enhanced fallback recommendation logic");
+    console.log(`Initial strain count: ${enhancedStrains.length}`);
     
     // Simple filtering based on preferences
     let filtered = [...enhancedStrains];
@@ -206,27 +207,41 @@ export class AIRecommender {
     
     // Filter by type if mood suggests a type preference
     if (preferences.mood) {
+      console.log(`Filtering by mood: ${preferences.mood}`);
+      
       if (['relaxed', 'sleepy'].includes(preferences.mood.toLowerCase())) {
+        console.log("Filtering for indica strains");
         filtered = filtered.filter(strain => 
           strain.type.toLowerCase().includes('indica')
         );
         strainTypeContext = "relaxing indica";
+        console.log(`After indica filter: ${filtered.length} strains`);
       } else if (['energetic', 'creative', 'focused'].includes(preferences.mood.toLowerCase())) {
+        console.log("Filtering for sativa strains");
         filtered = filtered.filter(strain => 
           strain.type.toLowerCase().includes('sativa')
         );
         strainTypeContext = "energizing sativa";
+        console.log(`After sativa filter: ${filtered.length} strains`);
       } else if (preferences.mood.toLowerCase() === 'balanced') {
+        console.log("Filtering for hybrid strains");
         filtered = filtered.filter(strain => 
           strain.type.toLowerCase().includes('hybrid')
         );
         strainTypeContext = "balanced hybrid";
+        console.log(`After hybrid filter: ${filtered.length} strains`);
+      } else {
+        console.log(`No specific strain type for mood: ${preferences.mood}`);
       }
+    } else {
+      console.log("No mood specified");
     }
     
     // Filter by THC content based on experience level
     let experienceLevelContext = "moderate";
     if (preferences.experienceLevel) {
+      console.log(`Filtering by experience level: ${preferences.experienceLevel}`);
+      
       if (preferences.experienceLevel === 'beginner') {
         filtered = filtered.filter(strain => {
           const match = strain.thcContent.match(/(\d+)-(\d+)/);
@@ -237,6 +252,7 @@ export class AIRecommender {
           return true;
         });
         experienceLevelContext = "mild, beginner-friendly";
+        console.log(`After beginner filter: ${filtered.length} strains`);
       } else if (preferences.experienceLevel === 'experienced') {
         experienceLevelContext = "potent, for experienced users";
       }
@@ -246,6 +262,25 @@ export class AIRecommender {
     const topStrains = filtered
       .sort((a, b) => b.rating - a.rating)
       .slice(0, 5);
+    
+    console.log(`After all filters, found ${topStrains.length} top strains`);
+    
+    // If no strains matched all filters, return a few default strains
+    if (topStrains.length === 0) {
+      console.log("No matching strains after all filters, using default recommendations");
+      // Just get the top rated strains without filtering
+      return enhancedStrains
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 5)
+        .map((strain, index) => {
+          const enhancedStrain = { ...strain };
+          enhancedStrain.matchScore = 70 - (index * 5);
+          enhancedStrain.matchReason = `This is a popular ${strain.type} strain with high ratings from users.`;
+          enhancedStrain.usageTips = `Start with a small amount and adjust based on your experience.`;
+          enhancedStrain.effectsExplanation = `Known for ${strain.effects.join(', ')} effects with a ${strain.flavors.join(', ')} flavor profile.`;
+          return enhancedStrain;
+        });
+    }
     
     // Add basic recommendation information for each strain
     return topStrains.map((strain, index) => {
