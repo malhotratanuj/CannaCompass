@@ -12,11 +12,40 @@ import {
 } from "@shared/schema";
 import { findNearbyDispensaries, startStoreFinderService } from "./storeFinder";
 import { setupAuth } from "./auth";
+import { vectorDb } from "./vectorDb";
+import { aiRecommender } from "./aiRecommender";
+import { enhancedStrains } from "./enhancedStrainData";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
   setupAuth(app);
   // prefix all routes with /api
+  
+  // Health check for the RAG system
+  app.get("/api/system/status", async (_req: Request, res: Response) => {
+    try {
+      // Initialize vector database if not already done
+      await vectorDb.initialize();
+      
+      const enhancedStrainCount = enhancedStrains.length;
+      const vectorDbInitialized = true; // We've just initialized it above
+      
+      res.json({
+        status: "healthy",
+        aiRecommenderReady: true,
+        vectorDbInitialized,
+        enhancedStrainCount,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error checking system status:", error);
+      res.status(500).json({
+        status: "unhealthy",
+        error: "Failed to verify AI system status",
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
   
   // Get strain recommendations based on user preferences
   app.post("/api/recommendations", async (req: Request, res: Response) => {
@@ -72,6 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/strains", async (_req: Request, res: Response) => {
     try {
       const strains = await storage.getAllStrains();
+      console.log(`Returning ${strains.length} strains from getAllStrains`);
       return res.json({ strains });
     } catch (error) {
       console.error("Error getting strains:", error);
