@@ -5,6 +5,7 @@ import {
   Strain, Dispensary, UserLocation, RecommendationRequest
 } from "@shared/schema";
 import { strains } from "./strainData";
+import { enhancedStrains } from "./enhancedStrainData";
 import { dispensaries } from "./dispensaryData";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -12,6 +13,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import { IStorage } from "./storage";
+import { aiRecommender } from "./aiRecommender";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -132,8 +134,29 @@ export class DatabaseStorage implements IStorage {
   
   // Strain recommendations
   async getStrainRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
+    try {
+      // Use the AI recommender for more advanced recommendations
+      console.log("Using AI Recommender for strain recommendations");
+      const aiRecommendations = await aiRecommender.getRecommendations(preferences);
+      
+      if (aiRecommendations && aiRecommendations.length > 0) {
+        console.log(`Got ${aiRecommendations.length} AI-powered recommendations`);
+        return aiRecommendations;
+      }
+      
+      // Fallback to traditional recommendation system if AI fails
+      console.log("Falling back to traditional recommendation system");
+      return this.getTraditionalRecommendations(preferences);
+    } catch (error) {
+      console.error("Error getting AI recommendations:", error);
+      return this.getTraditionalRecommendations(preferences);
+    }
+  }
+  
+  // Traditional recommendation algorithm as a fallback
+  private async getTraditionalRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
     // Enhanced recommendation algorithm based on mood and filters
-    let filteredStrains = strains;
+    let filteredStrains = enhancedStrains;
     
     // Filter by mood with expanded effect mappings to catch more strains
     const moodEffectMap: Record<string, string[]> = {
@@ -187,7 +210,7 @@ export class DatabaseStorage implements IStorage {
       // If still no matches, return a few default strains instead of nothing
       if (filteredStrains.length === 0) {
         console.log(`No strains match the mood: ${preferences.mood}. Using a default selection.`);
-        filteredStrains = strains.slice(0, 4);
+        filteredStrains = enhancedStrains.slice(0, 4);
       }
     }
     
@@ -233,11 +256,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getStrainById(strainId: string): Promise<Strain | undefined> {
+    // First check enhanced strains
+    const enhancedStrain = enhancedStrains.find(strain => strain.id === strainId);
+    if (enhancedStrain) {
+      return enhancedStrain;
+    }
+    
+    // Fallback to original strains
     return strains.find(strain => strain.id === strainId);
   }
 
   async getAllStrains(): Promise<Strain[]> {
-    return strains;
+    // Return enhanced strains dataset instead of original strains
+    console.log(`Returning ${enhancedStrains.length} strains from getAllStrains`);
+    return enhancedStrains;
   }
 
   // Dispensary finder
