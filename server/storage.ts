@@ -165,6 +165,41 @@ export class MemStorage implements IStorage {
     // Enhanced recommendation algorithm based on mood and filters
     let filteredStrains = strains;
     
+    // Define our effect mapping to handle variations of the same effect
+    const effectMapping: Record<string, string[]> = {
+      'Relaxation': ['Relaxing', 'Relaxation', 'Calming', 'Peaceful', 'Stress Relief'],
+      'Energy': ['Energetic', 'Energy', 'Active', 'Uplifting'],
+      'Focus': ['Focused', 'Focus', 'Clear-headed', 'Productive', 'Clear'],
+      'Creativity': ['Creative', 'Creativity', 'Inspired'],
+      'Euphoria': ['Euphoric', 'Euphoria', 'Happy', 'Giggly'],
+      'Pain Relief': ['Pain Relief', 'Analgesic']
+    };
+    
+    // Create a generic function to match effects with their variations
+    const matchEffectWithVariations = (targetEffect: string, actualEffect: string): boolean => {
+      // Try exact match first
+      if (targetEffect.toLowerCase() === actualEffect.toLowerCase()) {
+        return true;
+      }
+      
+      // Check if this is a known effect with variations
+      for (const [effect, variations] of Object.entries(effectMapping)) {
+        if (
+          (effect.toLowerCase() === targetEffect.toLowerCase() &&
+           variations.some(v => v.toLowerCase() === actualEffect.toLowerCase())) ||
+          (variations.some(v => v.toLowerCase() === targetEffect.toLowerCase()) &&
+           (effect.toLowerCase() === actualEffect.toLowerCase() || 
+            variations.some(v => v.toLowerCase() === actualEffect.toLowerCase())))
+        ) {
+          return true;
+        }
+      }
+      
+      // Try substring match as a fallback
+      return actualEffect.toLowerCase().includes(targetEffect.toLowerCase()) ||
+             targetEffect.toLowerCase().includes(actualEffect.toLowerCase());
+    };
+    
     // Filter by mood with expanded effect mappings to catch more strains
     const moodEffectMap: Record<string, string[]> = {
       'relaxed': ['Relaxing', 'Calming', 'Peaceful', 'Relaxation', 'Stress Relief', 'Pain Relief'],
@@ -194,7 +229,7 @@ export class MemStorage implements IStorage {
       let primaryMatches = filteredStrains.filter(strain => 
         strain.effects.some(effect => 
           primaryDesiredEffects.some(desiredEffect => 
-            effect.toLowerCase().includes(desiredEffect.toLowerCase())
+            matchEffectWithVariations(desiredEffect, effect)
           )
         )
       );
@@ -208,55 +243,40 @@ export class MemStorage implements IStorage {
         filteredStrains = filteredStrains.filter(strain => 
           strain.effects.some(effect => 
             primaryDesiredEffects.concat(secondaryDesiredEffects).some(desiredEffect => 
-              effect.toLowerCase().includes(desiredEffect.toLowerCase())
+              matchEffectWithVariations(desiredEffect, effect)
             )
           )
         );
       }
-      
-      // If still no matches, return a few default strains instead of nothing
-      if (filteredStrains.length === 0) {
-        console.log(`No strains match the mood: ${preferences.mood}. Using a default selection.`);
-        filteredStrains = strains.slice(0, 4);
-      }
     }
+    
+    // Debug logging
+    console.log(`After mood filtering: ${filteredStrains.length} strains`);
     
     // Filter by additional effects if specified
     if (preferences.effects && preferences.effects.length > 0) {
-      // Create a mapping to handle various forms of the same effect
-      const effectMapping: Record<string, string[]> = {
-        'Relaxation': ['Relaxing', 'Relaxation', 'Calming', 'Peaceful'],
-        'Energy': ['Energetic', 'Energy', 'Active'],
-        'Focus': ['Focused', 'Focus', 'Clear-headed', 'Productive'],
-        'Creativity': ['Creative', 'Creativity', 'Inspired'],
-        'Euphoria': ['Euphoric', 'Euphoria', 'Happy'],
-        'Pain Relief': ['Pain Relief', 'Analgesic']
-      };
+      console.log(`Filtering by effects: ${preferences.effects.join(', ')}`);
       
+      const beforeCount = filteredStrains.length;
       const matchedStrains = filteredStrains.filter(strain => 
-        preferences.effects!.some(effect => {
-          // Get synonyms for this effect (if they exist, otherwise use the effect itself)
-          const synonyms = effectMapping[effect] || [effect];
-          
-          // Check if any strain effect matches any of the synonyms
-          return strain.effects.some(strainEffect => 
-            synonyms.some(synonym => 
-              strainEffect.toLowerCase().includes(synonym.toLowerCase())
-            )
-          );
-        })
+        preferences.effects!.some(requestedEffect => 
+          strain.effects.some(strainEffect => 
+            matchEffectWithVariations(requestedEffect, strainEffect)
+          )
+        )
       );
+      
+      console.log(`Effect filtering results: ${matchedStrains.length} strains matched (from ${beforeCount})`);
       
       if (matchedStrains.length > 0) {
         filteredStrains = matchedStrains;
       } else {
-        // If no matches were found with the effects filter, log this and reset to before this filter
-        console.log(`No strains match the effect filters. Skipping effect filters.`);
-        // We'll keep the strains filtered by mood only in this case
+        console.log(`No strains match the effect filters: ${preferences.effects.join(', ')}. Using most relevant strains.`);
+        // If no strains match the effects, we'll keep the mood-filtered strains
       }
     }
     
-    // If no strains were found after all filters, return default set
+    // If no strains were found after all filtering, return a default set
     if (filteredStrains.length === 0) {
       console.log("No matching strains found after all filtering, using default set");
       return strains.slice(0, 4);
