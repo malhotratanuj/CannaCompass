@@ -28,11 +28,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await vectorDb.initialize();
       
       const enhancedStrainCount = enhancedStrains.length;
-      const originalStrainCount = strains.length;
       const vectorDbInitialized = true; // We've just initialized it above
       
       // Check the current strain arrays
-      console.log(`Enhanced strains: ${enhancedStrainCount}, Original strains: ${originalStrainCount}`);
+      console.log(`Enhanced strains: ${enhancedStrainCount}`);
       console.log(`First enhanced strain: ${enhancedStrains[0]?.name}`);
       
       res.json({
@@ -40,7 +39,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiRecommenderReady: true,
         vectorDbInitialized,
         enhancedStrainCount,
-        originalStrainCount,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -61,7 +59,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         enhancedStrainCount: enhancedStrains.length,
-        originalStrainCount: strains.length,
         returnedStrainCount: allStrains.length,
         firstStrain: firstStrain ? {
           id: firstStrain.id,
