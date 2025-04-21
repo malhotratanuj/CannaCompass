@@ -115,10 +115,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Return the raw array of strain recommendations instead of nesting them in an object
-      return res.json(recommendations);
+      // Ensure we always return an array, even if empty
+      const safeRecommendations = Array.isArray(recommendations) ? recommendations : [];
+      return res.json(safeRecommendations);
     } catch (error) {
       console.error("Error getting recommendations:", error);
-      return res.status(500).json({ message: "Failed to get strain recommendations" });
+      // Return empty array with 200 status instead of error
+      console.warn("Falling back to empty recommendations due to error:", error);
+      return res.json([]);
     }
   });
   
