@@ -31,8 +31,8 @@ const Footer: FC = () => {
           <div>
             <h3 className="text-white font-medium mb-4">Explore</h3>
             <ul className="space-y-2">
-              <li><Link href="/mood-selection"><a className="text-gray-400 hover:text-white text-sm">Strains Database</a></Link></li>
-              <li><Link href="/store-finder"><a className="text-gray-400 hover:text-white text-sm">Dispensary Finder</a></Link></li>
+              <li><Link href="/mood-selection" className="text-gray-400 hover:text-white text-sm">Strains Database</Link></li>
+              <li><Link href="/store-finder" className="text-gray-400 hover:text-white text-sm">Dispensary Finder</Link></li>
               <li><a href="#" className="text-gray-400 hover:text-white text-sm">Consumption Methods</a></li>
               <li><a href="#" className="text-gray-400 hover:text-white text-sm">Effects Guide</a></li>
               <li><a href="#" className="text-gray-400 hover:text-white text-sm">Latest Research</a></li>
