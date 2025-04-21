@@ -93,26 +93,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log("Calling storage.getStrainRecommendations...");
-      let recommendations = await storage.getStrainRecommendations({
-        mood,
-        experienceLevel,
-        effects,
-        flavors,
-        consumptionMethod
-      });
-      
-      // Ensure recommendations is always an array
-      if (!Array.isArray(recommendations) || recommendations.length === 0) {
-        console.log("No recommendations found, using fallback strains");
-        recommendations = await storage.getAllStrains();
-        // Take first 5 strains as fallback
-        recommendations = recommendations.slice(0, 5).map(strain => ({
+      try {
+        let recommendations = await storage.getStrainRecommendations({
+          mood,
+          experienceLevel,
+          effects,
+          flavors,
+          consumptionMethod
+        });
+        
+        // Ensure recommendations is always a valid array
+        if (!Array.isArray(recommendations) || recommendations.length === 0) {
+          console.log("No recommendations found or invalid response, using fallback strains");
+          const allStrains = await storage.getAllStrains();
+          recommendations = allStrains
+            .filter(strain => 
+              (!mood || strain.type.toLowerCase().includes(mood === 'creative' ? 'sativa' : 'indica')) &&
+              (!effects || effects.some(effect => strain.effects.includes(effect)))
+            )
+            .slice(0, 5)
+            .map(strain => ({
+              ...strain,
+              matchScore: 50,
+              matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
+              usageTips: `Start with a small amount and adjust based on your experience.`,
+              effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
+            }));
+        }
+        return res.json(recommendations);
+      } catch (error) {
+        console.error("Error in recommendations:", error);
+        // Return default recommendations on error
+        const allStrains = await storage.getAllStrains();
+        const defaultRecommendations = allStrains.slice(0, 5).map(strain => ({
           ...strain,
           matchScore: 50,
           matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
           usageTips: `Start with a small amount and adjust based on your experience.`,
           effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
         }));
+        return res.json(defaultRecommendations);
       }
       
       console.log(`Returning ${recommendations.length} recommendations`);
