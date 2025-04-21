@@ -93,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log("Calling storage.getStrainRecommendations...");
-      const recommendations = await storage.getStrainRecommendations({
+      let recommendations = await storage.getStrainRecommendations({
         mood,
         experienceLevel,
         effects,
@@ -101,28 +101,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         consumptionMethod
       });
       
-      console.log(`Got ${recommendations.length} recommendations`);
-      // Debug: log the first recommendation if available
-      if (recommendations.length > 0) {
-        console.log("First recommendation:", recommendations[0].name);
-        
-        // Debug log to verify if our recommendations have the enhanced attributes
-        if (recommendations[0].matchScore !== undefined) {
-          console.log("Enhanced recommendation data is present. Match score:", recommendations[0].matchScore);
-        } else {
-          console.log("Enhanced recommendation data is missing! Check the implementation.");
-        }
+      // Ensure recommendations is always an array
+      if (!Array.isArray(recommendations) || recommendations.length === 0) {
+        console.log("No recommendations found, using fallback strains");
+        recommendations = await storage.getAllStrains();
+        // Take first 5 strains as fallback
+        recommendations = recommendations.slice(0, 5).map(strain => ({
+          ...strain,
+          matchScore: 50,
+          matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
+          usageTips: `Start with a small amount and adjust based on your experience.`,
+          effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
+        }));
       }
       
-      // Return the raw array of strain recommendations instead of nesting them in an object
-      // Ensure we always return an array, even if empty
-      const safeRecommendations = Array.isArray(recommendations) ? recommendations : [];
-      return res.json(safeRecommendations);
+      console.log(`Returning ${recommendations.length} recommendations`);
+      if (recommendations.length > 0) {
+        console.log("First recommendation:", recommendations[0].name);
+      }
+      
+      return res.json(recommendations);
     } catch (error) {
       console.error("Error getting recommendations:", error);
-      // Return empty array with 200 status instead of error
-      console.warn("Falling back to empty recommendations due to error:", error);
-      return res.json([]);
+      // Return default recommendations on error
+      const fallbackStrains = await storage.getAllStrains();
+      const defaultRecommendations = fallbackStrains.slice(0, 5).map(strain => ({
+        ...strain,
+        matchScore: 50,
+        matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
+        usageTips: `Start with a small amount and adjust based on your experience.`,
+        effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
+      }));
+      return res.json(defaultRecommendations);
     }
   });
   
