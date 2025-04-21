@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { Strain, RecommendationRequest } from '@shared/schema';
 import { vectorDb, createQuery } from './vectorDb';
 import { enhancedStrains } from './enhancedStrainData';
+import { anthropicRecommender } from './anthropic';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -10,6 +11,10 @@ const openai = new OpenAI({
 
 // The newest OpenAI model is "gpt-4o" which was released May 13, 2024
 const OPENAI_MODEL = "gpt-4o";
+
+// Flag to use Anthropic instead of OpenAI when available
+// Set to false to prioritize OpenAI even if Anthropic is available
+const USE_ANTHROPIC = false;
 
 // Interface for the recommendation result from AI
 interface AIRecommendationResult {
@@ -54,6 +59,88 @@ export class AIRecommender {
 
   // Generate AI recommendations using OpenAI
   private async generateAIRecommendations(
+    preferences: RecommendationRequest, 
+    candidateStrains: Strain[]
+  ): Promise<Strain[]> {
+    try {
+      // Choose between Anthropic and OpenAI for recommendations
+      if (USE_ANTHROPIC) {
+        console.log("Using Anthropic Claude for enhanced recommendations");
+        return this.generateAnthropicRecommendations(preferences, candidateStrains);
+      } else {
+        console.log("Using OpenAI for recommendations");
+        return this.generateOpenAIRecommendations(preferences, candidateStrains);
+      }
+    } catch (error) {
+      console.error("Error in AI recommendation:", error);
+      // Use our enhanced fallback system instead
+      return this.getFallbackRecommendations(preferences);
+    }
+  }
+
+  private async generateAnthropicRecommendations(
+    preferences: RecommendationRequest,
+    candidateStrains: Strain[]
+  ): Promise<Strain[]> {
+    try {
+      console.log("Generating recommendations with Claude");
+      
+      // Process each candidate strain with Anthropic for personalized insights
+      const enhancedStrainsPromises = candidateStrains.slice(0, 5).map(async (strain) => {
+        try {
+          // Get enhanced recommendation from Anthropic
+          const enhancement = await anthropicRecommender.getEnhancedRecommendation(
+            {
+              mood: preferences.mood || "relaxed",
+              experienceLevel: preferences.experienceLevel || "intermediate",
+              effects: preferences.effects || [],
+              flavors: preferences.flavors || [],
+              consumptionMethod: preferences.consumptionMethod || undefined,
+              timeOfDay: undefined, // Not in our schema yet
+              medicalConditions: []  // Not in our schema yet
+            },
+            strain
+          );
+          
+          // Create an enhanced strain with Claude insights
+          return {
+            ...strain,
+            matchScore: enhancement.matchScore,
+            matchReason: enhancement.matchReason,
+            usageTips: enhancement.usageTips,
+            effectsExplanation: enhancement.effectsExplanation
+          };
+        } catch (error) {
+          console.error(`Error enhancing strain ${strain.name} with Anthropic:`, error);
+          // Return basic enhancement if Claude enhancement fails
+          return {
+            ...strain,
+            matchScore: 50,
+            matchReason: `${strain.name} is a ${strain.type} strain that may provide ${strain.effects.slice(0, 2).join(' and ')} effects.`,
+            usageTips: `Start with a small amount of ${strain.name} and gradually increase as needed.`,
+            effectsExplanation: `${strain.name} typically provides effects including ${strain.effects.join(', ')}.`
+          };
+        }
+      });
+      
+      // Wait for all enhancements to complete
+      const enhancedStrains = await Promise.all(enhancedStrainsPromises);
+      
+      // Sort by match score
+      return enhancedStrains.sort((a, b) => {
+        if (a.matchScore !== undefined && b.matchScore !== undefined) {
+          return b.matchScore - a.matchScore;
+        }
+        return b.rating - a.rating;
+      });
+    } catch (error) {
+      console.error("Error using Anthropic for recommendations:", error);
+      // Fall back to OpenAI if Anthropic fails completely
+      return this.generateOpenAIRecommendations(preferences, candidateStrains);
+    }
+  }
+
+  private async generateOpenAIRecommendations(
     preferences: RecommendationRequest, 
     candidateStrains: Strain[]
   ): Promise<Strain[]> {

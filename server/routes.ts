@@ -34,11 +34,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Enhanced strains: ${enhancedStrainCount}`);
       console.log(`First enhanced strain: ${enhancedStrains[0]?.name}`);
       
+      // Check AI services
+      const openAiAvailable = !!process.env.OPENAI_API_KEY;
+      const anthropicAvailable = !!process.env.ANTHROPIC_API_KEY;
+      
       res.json({
         status: "healthy",
         aiRecommenderReady: true,
         vectorDbInitialized,
         enhancedStrainCount,
+        aiServices: {
+          openai: openAiAvailable,
+          anthropic: anthropicAvailable,
+          primaryService: openAiAvailable ? "openai" : (anthropicAvailable ? "anthropic" : "fallback")
+        },
         timestamp: new Date().toISOString()
       });
     } catch (error) {

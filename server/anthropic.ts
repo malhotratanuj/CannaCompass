@@ -19,11 +19,11 @@ class AnthropicRecommender {
     query: {
       mood: string;
       experienceLevel: string;
-      effects?: string[];
-      flavors?: string[];
+      effects: string[];
+      flavors: string[];
       consumptionMethod?: string;
       timeOfDay?: string;
-      medicalConditions?: string[];
+      medicalConditions: string[];
     },
     strainDetails: {
       id: string;
@@ -46,12 +46,12 @@ class AnthropicRecommender {
         model: 'claude-3-7-sonnet-20250219',
         system: "You are a Cannabis Medical Expert AI advisor. Provide detailed, science-based information about cannabis strains, focusing on medical applications, effects, and consumption guidance. Be informative but responsible, noting that cannabis affects individuals differently and mentioning potential side effects. Avoid recreational terminology. Structure your responses as JSON containing matchScore, matchReason, usageTips, and effectsExplanation.",
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        response_format: { type: "json_object" }
+        temperature: 0.7
       });
 
       // Parse the response as JSON
-      const enhancedData = JSON.parse(message.content[0].text);
+      const textContent = message.content[0].type === 'text' ? message.content[0].text : '{}';
+      const enhancedData = JSON.parse(textContent);
       
       return {
         matchScore: enhancedData.matchScore,
@@ -102,12 +102,12 @@ class AnthropicRecommender {
         model: 'claude-3-7-sonnet-20250219',
         system: "You are a Cannabis Medical Expert AI advisor. Provide detailed, science-based information about cannabis strains, focusing on medical applications, effects, and consumption guidance. Be informative but responsible, noting that cannabis affects individuals differently and mentioning potential side effects. Avoid recreational terminology.",
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        response_format: { type: "json_object" }
+        temperature: 0.7
       });
 
       // Parse the response
-      return JSON.parse(message.content[0].text);
+      const textContent = message.content[0].type === 'text' ? message.content[0].text : '{}';
+      return JSON.parse(textContent);
     } catch (error) {
       console.error("Error generating detailed strain analysis with Anthropic:", error);
       return {
@@ -211,16 +211,16 @@ class AnthropicRecommender {
     
     // Check for effects match
     if (query.effects && query.effects.length > 0) {
-      const effectMatch = query.effects.filter(effect => 
-        strainDetails.effects.some(e => e.toLowerCase().includes(effect.toLowerCase()))
+      const effectMatch = query.effects.filter((effect: string) => 
+        strainDetails.effects.some((e: string) => e.toLowerCase().includes(effect.toLowerCase()))
       ).length;
       matchScore += Math.min(15, effectMatch * 5);
     }
     
     // Check for flavor match
     if (query.flavors && query.flavors.length > 0) {
-      const flavorMatch = query.flavors.filter(flavor => 
-        strainDetails.flavors.some(f => f.toLowerCase().includes(flavor.toLowerCase()))
+      const flavorMatch = query.flavors.filter((flavor: string) => 
+        strainDetails.flavors.some((f: string) => f.toLowerCase().includes(flavor.toLowerCase()))
       ).length;
       matchScore += Math.min(15, flavorMatch * 5);
     }
