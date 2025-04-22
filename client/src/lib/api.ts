@@ -2,22 +2,44 @@ import { apiRequest } from "./queryClient";
 import { Strain, Dispensary, RecommendationRequest, UserLocation } from "@shared/schema";
 
 export async function getStrainRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
-  const response = await apiRequest("POST", "/api/recommendations", preferences);
-  const data = await response.json();
-  
-  // Server returns the array directly, not inside a recommendations object
-  if (Array.isArray(data)) {
-    return data;
+  try {
+    console.log('Getting strain recommendations with preferences:', preferences);
+    const response = await apiRequest("POST", "/api/recommendations", preferences);
+    
+    if (!response.ok) {
+      console.error(`Recommendations API returned status ${response.status}: ${response.statusText}`);
+      return []; // Return empty array on error
+    }
+    
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error("Failed to parse JSON from recommendations API:", jsonError);
+      return []; // Return empty array if JSON parsing fails
+    }
+    
+    console.log('Recommendations API response:', data);
+    
+    // Server returns the array directly, not inside a recommendations object
+    if (Array.isArray(data)) {
+      console.log(`Received ${data.length} recommendations directly as array`);
+      return data;
+    }
+    
+    // Fallback for the case where server returns { recommendations: [...] }
+    if (data && data.recommendations && Array.isArray(data.recommendations)) {
+      console.log(`Received ${data.recommendations.length} recommendations in recommendations property`);
+      return data.recommendations;
+    }
+    
+    // If no valid data format is found, return empty array to avoid undefined errors
+    console.error("Invalid response format from recommendations API:", data);
+    return [];
+  } catch (error) {
+    console.error("Error fetching recommendations:", error);
+    return []; // Always return an array, never undefined
   }
-  
-  // Fallback for the case where server returns { recommendations: [...] }
-  if (data.recommendations && Array.isArray(data.recommendations)) {
-    return data.recommendations;
-  }
-  
-  // If no valid data format is found, return empty array to avoid undefined errors
-  console.error("Invalid response format from recommendations API:", data);
-  return [];
 }
 
 export async function getStrainById(id: string): Promise<Strain> {

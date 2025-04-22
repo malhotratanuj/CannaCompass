@@ -93,40 +93,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log("Calling storage.getStrainRecommendations...");
+      console.log("Request parameters:", { mood, experienceLevel, effects, flavors, consumptionMethod });
+      
       try {
-        const recommendations = await storage.getStrainRecommendations({
+        // Make a clean request object with no undefined values
+        const requestParams = {
           mood,
           experienceLevel,
           effects: effects || [],
           flavors: flavors || [],
           consumptionMethod: consumptionMethod || []
-        });
+        };
+        
+        // Try to get recommendations
+        let recommendations = await storage.getStrainRecommendations(requestParams);
+        
+        // Ensure we have a valid array (defensive programming)
+        if (!recommendations || !Array.isArray(recommendations)) {
+          console.warn("Storage returned a non-array result:", recommendations);
+          recommendations = [];
+        }
         
         // Log successful recommendations
         console.log(`Got ${recommendations.length} recommendations`);
         if (recommendations.length > 0) {
           console.log(`Enhanced recommendation data is present. Match score: ${recommendations[0].matchScore || 'N/A'}`);
+          return res.json(recommendations);
+        } else {
+          console.log("No recommendations found, using fallback recommendations");
+          
+          // If no recommendations found, use fallback
+          throw new Error("No recommendations found for the given criteria");
         }
-        
-        return res.json(recommendations);
       } catch (error) {
         console.error("Error in recommendations:", error);
         
-        // Return default recommendations on error
-        const allStrains = await storage.getAllStrains();
-        const defaultRecommendations = allStrains
-          .sort((a, b) => b.rating - a.rating)
-          .slice(0, 5)
-          .map(strain => ({
-            ...strain,
-            matchScore: 50,
-            matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
-            usageTips: `Start with a small amount and adjust based on your experience.`,
-            effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
-          }));
-        
-        console.log(`Returning ${defaultRecommendations.length} fallback recommendations after error`);
-        return res.json(defaultRecommendations);
+        try {
+          // Return default recommendations on error
+          const allStrains = await storage.getAllStrains();
+          
+          // Make sure we have strains to work with
+          if (!allStrains || !Array.isArray(allStrains) || allStrains.length === 0) {
+            console.error("Error retrieving strains for fallback recommendations");
+            return res.json([]); // Return empty array as last resort
+          }
+          
+          // Create fallback recommendations with basic enhancement
+          const defaultRecommendations = allStrains
+            .sort((a, b) => b.rating - a.rating)
+            .slice(0, 5)
+            .map(strain => ({
+              ...strain,
+              matchScore: 50,
+              matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
+              usageTips: `Start with a small amount and adjust based on your experience.`,
+              effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
+            }));
+          
+          console.log(`Returning ${defaultRecommendations.length} fallback recommendations after error`);
+          return res.json(defaultRecommendations);
+        } catch (fallbackError) {
+          console.error("Critical error in fallback recommendations:", fallbackError);
+          
+          // Absolute last resort - return empty array but not undefined/null
+          return res.json([]);
+        }
       }
     } catch (error) {
       console.error("Unexpected error in recommendation route:", error);
