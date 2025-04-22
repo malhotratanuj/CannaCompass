@@ -4,7 +4,20 @@ import { Strain, Dispensary, RecommendationRequest, UserLocation } from "@shared
 export async function getStrainRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
   const response = await apiRequest("POST", "/api/recommendations", preferences);
   const data = await response.json();
-  return data.recommendations;
+  
+  // Server returns the array directly, not inside a recommendations object
+  if (Array.isArray(data)) {
+    return data;
+  }
+  
+  // Fallback for the case where server returns { recommendations: [...] }
+  if (data.recommendations && Array.isArray(data.recommendations)) {
+    return data.recommendations;
+  }
+  
+  // If no valid data format is found, return empty array to avoid undefined errors
+  console.error("Invalid response format from recommendations API:", data);
+  return [];
 }
 
 export async function getStrainById(id: string): Promise<Strain> {

@@ -94,65 +94,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Calling storage.getStrainRecommendations...");
       try {
-        let recommendations = await storage.getStrainRecommendations({
+        const recommendations = await storage.getStrainRecommendations({
           mood,
           experienceLevel,
-          effects,
-          flavors,
-          consumptionMethod
+          effects: effects || [],
+          flavors: flavors || [],
+          consumptionMethod: consumptionMethod || []
         });
         
-        // Ensure recommendations is always a valid array
-        if (!Array.isArray(recommendations) || recommendations.length === 0) {
-          console.log("No recommendations found or invalid response, using fallback strains");
-          const allStrains = await storage.getAllStrains();
-          recommendations = allStrains
-            .filter(strain => 
-              (!mood || strain.type.toLowerCase().includes(mood === 'creative' ? 'sativa' : 'indica')) &&
-              (!effects || effects.some(effect => strain.effects.includes(effect)))
-            )
-            .slice(0, 5)
-            .map(strain => ({
-              ...strain,
-              matchScore: 50,
-              matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
-              usageTips: `Start with a small amount and adjust based on your experience.`,
-              effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
-            }));
+        // Log successful recommendations
+        console.log(`Got ${recommendations.length} recommendations`);
+        if (recommendations.length > 0) {
+          console.log(`Enhanced recommendation data is present. Match score: ${recommendations[0].matchScore || 'N/A'}`);
         }
+        
         return res.json(recommendations);
       } catch (error) {
         console.error("Error in recommendations:", error);
+        
         // Return default recommendations on error
         const allStrains = await storage.getAllStrains();
-        const defaultRecommendations = allStrains.slice(0, 5).map(strain => ({
-          ...strain,
-          matchScore: 50,
-          matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
-          usageTips: `Start with a small amount and adjust based on your experience.`,
-          effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
-        }));
+        const defaultRecommendations = allStrains
+          .sort((a, b) => b.rating - a.rating)
+          .slice(0, 5)
+          .map(strain => ({
+            ...strain,
+            matchScore: 50,
+            matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
+            usageTips: `Start with a small amount and adjust based on your experience.`,
+            effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
+          }));
+        
+        console.log(`Returning ${defaultRecommendations.length} fallback recommendations after error`);
         return res.json(defaultRecommendations);
       }
-      
-      console.log(`Returning ${recommendations.length} recommendations`);
-      if (recommendations.length > 0) {
-        console.log("First recommendation:", recommendations[0].name);
-      }
-      
-      return res.json(recommendations);
     } catch (error) {
-      console.error("Error getting recommendations:", error);
-      // Return default recommendations on error
-      const fallbackStrains = await storage.getAllStrains();
-      const defaultRecommendations = fallbackStrains.slice(0, 5).map(strain => ({
-        ...strain,
-        matchScore: 50,
-        matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
-        usageTips: `Start with a small amount and adjust based on your experience.`,
-        effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
-      }));
-      return res.json(defaultRecommendations);
+      console.error("Unexpected error in recommendation route:", error);
+      
+      try {
+        // Ultimate fallback - return some basic strains if anything fails
+        const fallbackStrains = await storage.getAllStrains();
+        const defaultRecommendations = fallbackStrains
+          .sort((a, b) => b.rating - a.rating)
+          .slice(0, 5)
+          .map(strain => ({
+            ...strain,
+            matchScore: 50,
+            matchReason: `${strain.name} is a popular ${strain.type.toLowerCase()} strain`,
+            usageTips: `Start with a small amount and adjust based on your experience.`,
+            effectsExplanation: `Known for ${strain.effects.join(', ')} effects.`
+          }));
+        
+        console.log(`Returning ${defaultRecommendations.length} emergency fallback recommendations`);
+        return res.json(defaultRecommendations);
+      } catch (finalError) {
+        // If even the fallback fails, return an empty array to avoid undefined errors
+        console.error("Critical error in recommendation fallback:", finalError);
+        return res.json([]);
+      }
     }
   });
   
