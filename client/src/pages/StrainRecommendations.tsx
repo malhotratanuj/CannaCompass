@@ -65,6 +65,11 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
     onStrainSelect(strain);
   };
 
+  // Mark this step as active only once when the component mounts
+  useEffect(() => {
+    onStepChange(3);
+  }, [onStepChange]);
+  
   // Query to get strain recommendations
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['/api/recommendations', preferences],
@@ -73,23 +78,24 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
     retry: 2, // Retry twice if the API call fails
     retryDelay: 1000, // Wait 1 second between retries
     staleTime: 5 * 60 * 1000, // Data remains fresh for 5 minutes
+    refetchOnWindowFocus: false, // Don't refetch when the window regains focus
   });
 
+  // Only update recommendations when data changes, to prevent infinite re-renders
   useEffect(() => {
-    // Mark this step as active
-    onStepChange(3);
-    
-    // Update the recommendations in the parent component when data is available
-    if (data) {
+    if (data && Array.isArray(data)) {
       console.log("Setting strain recommendations:", data.length);
       setRecommendedStrains(data);
-    } else if (!isLoading && !isError) {
-      // If we're not loading and there's no error, but data is undefined
-      // Force a fallback to empty array to avoid undefined errors
-      console.log("No data available, using empty recommendations array");
+    }
+  }, [data, setRecommendedStrains]);
+  
+  // If no data is available after loading completes, set an empty array
+  useEffect(() => {
+    if (!isLoading && !data && !isError) {
+      console.log("No data available after loading completed, using empty array");
       setRecommendedStrains([]);
     }
-  }, [data, isLoading, isError, setRecommendedStrains, onStepChange]);
+  }, [isLoading, data, isError, setRecommendedStrains]);
 
   const handlePrevStep = () => {
     setLocation('/effects-preferences');
