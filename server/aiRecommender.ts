@@ -95,7 +95,7 @@ export class AIRecommender {
               experienceLevel: preferences.experienceLevel || "intermediate",
               effects: preferences.effects || [],
               flavors: preferences.flavors || [],
-              consumptionMethod: preferences.consumptionMethod || undefined,
+              consumptionMethod: preferences.consumptionMethod ? preferences.consumptionMethod.join(', ') : undefined,
               timeOfDay: undefined, // Not in our schema yet
               medicalConditions: []  // Not in our schema yet
             },

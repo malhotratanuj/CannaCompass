@@ -70,16 +70,26 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
     queryKey: ['/api/recommendations', preferences],
     queryFn: () => getStrainRecommendations(preferences),
     enabled: !!preferences.mood, // Only run if we have a mood selected
+    retry: 2, // Retry twice if the API call fails
+    retryDelay: 1000, // Wait 1 second between retries
+    staleTime: 5 * 60 * 1000, // Data remains fresh for 5 minutes
   });
 
   useEffect(() => {
+    // Mark this step as active
+    onStepChange(3);
+    
     // Update the recommendations in the parent component when data is available
     if (data) {
+      console.log("Setting strain recommendations:", data.length);
       setRecommendedStrains(data);
+    } else if (!isLoading && !isError) {
+      // If we're not loading and there's no error, but data is undefined
+      // Force a fallback to empty array to avoid undefined errors
+      console.log("No data available, using empty recommendations array");
+      setRecommendedStrains([]);
     }
-    
-    onStepChange(3);
-  }, [data, setRecommendedStrains, onStepChange]);
+  }, [data, isLoading, isError, setRecommendedStrains, onStepChange]);
 
   const handlePrevStep = () => {
     setLocation('/effects-preferences');
