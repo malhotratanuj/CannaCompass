@@ -4,7 +4,7 @@ import ProgressBar from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { RecommendationRequest } from '@shared/schema';
 import { EFFECTS, FLAVORS, CONSUMPTION_METHODS, MoodType } from '@/types';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2, Circle, ArrowLeft } from 'lucide-react';
 import TutorialTooltip from '@/components/TutorialTooltip';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { getEffectsByMood, isEffectCompatibleWithMood } from '@/lib/moodEffectMapping';

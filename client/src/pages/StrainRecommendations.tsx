@@ -23,7 +23,7 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { RecommendationRequest, Strain } from '@shared/schema';
 import { MOODS } from '@/types';
 import { getStrainRecommendations } from '@/lib/api';
@@ -178,9 +178,7 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
             className="rounded-full w-9 h-9 p-0 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-200"
             title="Go back to home"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
+            <ArrowLeft size={20} />
           </Button>
         </div>
         
