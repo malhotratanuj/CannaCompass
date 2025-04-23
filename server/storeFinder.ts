@@ -108,9 +108,6 @@ export async function findNearbyDispensaries(
       }
     }
 
-    // Get city name for store generation
-    const cityName = location.address ? extractCity(location.address) : 'Vancouver';
-
     // Try to use the browser-use service if it's available
     if (browserUseAvailable && location.address) {
       try {
