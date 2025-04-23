@@ -28,6 +28,7 @@ const EffectsPreferences: FC<EffectsPreferencesProps> = ({
   const [selectedConsumptionMethods, setSelectedConsumptionMethods] = useState<string[]>([]);
   const [compatibleEffects, setCompatibleEffects] = useState<string[]>(EFFECTS);
 
+  // Initialize preferred effects when component mounts
   useEffect(() => {
     // If we already have preferences, pre-select them
     if (preferences.effects) {
@@ -42,25 +43,36 @@ const EffectsPreferences: FC<EffectsPreferencesProps> = ({
       setSelectedConsumptionMethods(preferences.consumptionMethod);
     }
     
+    onStepChange(2);
+  }, [preferences.effects, preferences.flavors, preferences.consumptionMethod, onStepChange]);
+
+  // Filter effects based on mood separately to avoid dependency loop
+  useEffect(() => {
     // If we have a mood selected, filter effects based on the mood
     if (preferences.mood) {
       const mood = preferences.mood as MoodType;
       setCompatibleEffects(getEffectsByMood(mood));
       
       // Also filter out incompatible effects from currently selected effects
-      const newSelectedEffects = selectedEffects.filter(effect => 
-        isEffectCompatibleWithMood(effect, mood)
-      );
-      
-      if (newSelectedEffects.length !== selectedEffects.length) {
-        setSelectedEffects(newSelectedEffects);
+      // Only run this once when the component mounts or mood changes
+      if (preferences.effects) {
+        const newSelectedEffects = preferences.effects.filter(effect => 
+          isEffectCompatibleWithMood(effect, mood)
+        );
+        
+        if (JSON.stringify(newSelectedEffects) !== JSON.stringify(preferences.effects)) {
+          setSelectedEffects(newSelectedEffects);
+          
+          // Update the preferences object to reflect the filtered effects
+          updatePreferences({
+            effects: newSelectedEffects
+          });
+        }
       }
     } else {
       setCompatibleEffects(EFFECTS);
     }
-    
-    onStepChange(2);
-  }, [preferences, onStepChange, selectedEffects]);
+  }, [preferences.mood]);
 
   const toggleEffect = (effect: string) => {
     if (selectedEffects.includes(effect)) {
@@ -136,23 +148,46 @@ const EffectsPreferences: FC<EffectsPreferencesProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div id="effects-selection" className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <TutorialTooltip targetId="effects-selection" position="right">
-              <h3 className="text-lg font-semibold mb-4">Desired Effects</h3>
+              <h3 className="text-lg font-semibold mb-4">
+                Desired Effects
+                {preferences.mood && (
+                  <span className="ml-2 text-sm text-gray-500 font-normal">
+                    (Filtered for {preferences.mood} mood)
+                  </span>
+                )}
+              </h3>
               <div className="space-y-2">
-                {EFFECTS.map((effect) => (
-                  <div key={effect} className="flex items-center">
-                    <button 
-                      onClick={() => toggleEffect(effect)}
-                      className="flex items-center focus:outline-none"
-                    >
-                      {selectedEffects.includes(effect) ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <Circle className="h-5 w-5 text-gray-300" />
-                      )}
-                      <span className="ml-2 text-sm text-gray-700">{effect}</span>
-                    </button>
-                  </div>
-                ))}
+                {EFFECTS.map((effect) => {
+                  const isCompatible = preferences.mood ? 
+                    isEffectCompatibleWithMood(effect, preferences.mood as MoodType) : 
+                    true;
+                  
+                  if (!isCompatible && !selectedEffects.includes(effect)) {
+                    return null; // Don't show incompatible effects unless already selected
+                  }
+                  
+                  return (
+                    <div key={effect} className="flex items-center">
+                      <button 
+                        onClick={() => toggleEffect(effect)}
+                        className={`flex items-center focus:outline-none ${!isCompatible ? 'opacity-50' : ''}`}
+                        title={!isCompatible ? `This effect may not be ideal for a ${preferences.mood} mood` : ''}
+                      >
+                        {selectedEffects.includes(effect) ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-gray-300" />
+                        )}
+                        <span className="ml-2 text-sm text-gray-700">{effect}</span>
+                        {!isCompatible && selectedEffects.includes(effect) && (
+                          <span className="ml-2 text-xs text-amber-600">
+                            (not ideal for {preferences.mood} mood)
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </TutorialTooltip>
           </div>
