@@ -141,17 +141,9 @@ export async function findNearbyDispensaries(
     // If we get here, the browser-use service is not available or failed
     // So we use our static data approach instead
     
-    // Check for V4N postal code specifically (Surrey, BC area)
-    const isV4NPostalCode = location.address?.toUpperCase().startsWith('V4N');
-    
-    // Set coordinates for V4N area (Surrey, BC near 104 Ave & 140 St)
-    if (isV4NPostalCode) {
-      location.latitude = 49.191;
-      location.longitude = -122.847;
-    }
-    
-    // Get city name for store generation
-    const cityName = location.address ? extractCity(location.address) : 'Vancouver';
+    // Generate dynamic data based on the location
+    // This simulates what browser-use would do but without requiring the external service
+    const cityName = location.address ? extractCity(location.address) : 'Denver';
     
     // Generate authentic Canadian dispensary names
     // For MVP, we're focusing exclusively on Canadian stores
@@ -182,15 +174,7 @@ export async function findNearbyDispensaries(
     ];
     
     // Generate addresses that match the provided location
-    // Generate addresses specific to the area if it's V4N postal code
-    const generatedAddresses = isV4NPostalCode ? 
-      [
-        "10310 - 152nd Street, Surrey, BC V4N 5Z6",
-        "14888 - 104th Avenue, Surrey, BC V4N 1M7",
-        "15100 - 100th Avenue, Surrey, BC V4N 0G9",
-        "10275 - 144th Street, Surrey, BC V4N 4P7"
-      ] :
-      generateAddresses(cityName, 10);
+    const generatedAddresses = generateAddresses(cityName, 10);
     
     // Create dispensaries with realistic data
     const dynamicDispensaries: Dispensary[] = realStoreNames.map((name, index) => {
