@@ -197,7 +197,8 @@ class GooglePlacesService {
       website: place.website || '',
       amenities: ['Cannabis Store'],
       imageUrl: photoUrl,
-      inventory: [] // We don't have inventory data from Google Places
+      inventory: [], // We don't have inventory data from Google Places
+      placeId: place.place_id
     };
   }
   

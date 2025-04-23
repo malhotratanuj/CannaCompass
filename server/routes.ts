@@ -15,6 +15,8 @@ import { setupAuth } from "./auth";
 import { vectorDb } from "./vectorDb";
 import { aiRecommender } from "./aiRecommender";
 import { enhancedStrains } from "./enhancedStrainData";
+import { googlePlacesAdapter } from "./googlePlacesAdapter";
+import { googlePlacesService } from "./googlePlacesService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
