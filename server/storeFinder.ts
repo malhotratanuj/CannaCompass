@@ -141,18 +141,6 @@ export async function findNearbyDispensaries(
     // If we get here, the browser-use service is not available or failed
     // So we use our static data approach instead
     
-    // Extract city from address for consistent handling
-    const cityName = extractCity(location.address || '');
-    console.log(`Searching for dispensaries in ${cityName}`);
-    
-    // Generate dynamic dispensaries based on location
-    const dynamicDispensaries = generateDynamicDispensaries(cityName, selectedStrainIds, radius);
-    
-    // Filter by radius and sort by distance
-    return dynamicDispensaries
-      .filter(d => d.distance <= radius)
-      .sort((a, b) => a.distance - b.distance);
-    
     // Generate dynamic data based on the location
     // This simulates what browser-use would do but without requiring the external service
     const cityName = location.address ? extractCity(location.address) : 'Denver';
