@@ -169,22 +169,38 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
         onRestart={handleRestart}
       />
       
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Your Recommended Strains</h2>
-        <div className="flex items-center">
-          <span className="mr-2 text-sm text-gray-600">Sort by:</span>
-          <Select defaultValue="relevance" onValueChange={handleSortChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Relevance" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="relevance">Relevance</SelectItem>
-              <SelectItem value="rating">Rating</SelectItem>
-              <SelectItem value="thc-high">THC (High to Low)</SelectItem>
-              <SelectItem value="thc-low">THC (Low to High)</SelectItem>
-              <SelectItem value="cbd">CBD Content</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="relative">
+        <div className="absolute top-1 left-1">
+          <Button
+            onClick={() => setLocation('/')}
+            variant="ghost"
+            size="sm"
+            className="rounded-full w-9 h-9 p-0 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+            title="Go back to home"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </Button>
+        </div>
+        
+        <div className="flex justify-between items-center mb-6 pt-1">
+          <h2 className="text-2xl font-bold text-gray-900">Your Recommended Strains</h2>
+          <div className="flex items-center">
+            <span className="mr-2 text-sm text-gray-600">Sort by:</span>
+            <Select defaultValue="relevance" onValueChange={handleSortChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Relevance" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="relevance">Relevance</SelectItem>
+                <SelectItem value="rating">Rating</SelectItem>
+                <SelectItem value="thc-high">THC (High to Low)</SelectItem>
+                <SelectItem value="thc-low">THC (Low to High)</SelectItem>
+                <SelectItem value="cbd">CBD Content</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
       

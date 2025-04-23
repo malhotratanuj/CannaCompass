@@ -141,7 +141,20 @@ const EffectsPreferences: FC<EffectsPreferencesProps> = ({
         onRestart={handleRestart}
       />
       
-      <div>
+      <div className="relative">
+        <div className="absolute top-1 left-1">
+          <Button
+            onClick={() => setLocation('/')}
+            variant="ghost"
+            size="sm"
+            className="rounded-full w-9 h-9 p-0 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+            title="Go back to home"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </Button>
+        </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Fine-tune your experience</h2>
         <p className="text-gray-600 mb-6">Adjust your preferences to get more personalized recommendations.</p>
         
