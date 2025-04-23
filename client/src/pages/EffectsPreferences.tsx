@@ -3,10 +3,11 @@ import { useLocation } from 'wouter';
 import ProgressBar from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { RecommendationRequest } from '@shared/schema';
-import { EFFECTS, FLAVORS, CONSUMPTION_METHODS } from '@/types';
+import { EFFECTS, FLAVORS, CONSUMPTION_METHODS, MoodType } from '@/types';
 import { CheckCircle2, Circle } from 'lucide-react';
 import TutorialTooltip from '@/components/TutorialTooltip';
 import { useTutorial } from '@/contexts/TutorialContext';
+import { getEffectsByMood, isEffectCompatibleWithMood } from '@/lib/moodEffectMapping';
 
 interface EffectsPreferencesProps {
   currentStep: number;
@@ -25,6 +26,7 @@ const EffectsPreferences: FC<EffectsPreferencesProps> = ({
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
   const [selectedConsumptionMethods, setSelectedConsumptionMethods] = useState<string[]>([]);
+  const [compatibleEffects, setCompatibleEffects] = useState<string[]>(EFFECTS);
 
   useEffect(() => {
     // If we already have preferences, pre-select them
@@ -40,8 +42,25 @@ const EffectsPreferences: FC<EffectsPreferencesProps> = ({
       setSelectedConsumptionMethods(preferences.consumptionMethod);
     }
     
+    // If we have a mood selected, filter effects based on the mood
+    if (preferences.mood) {
+      const mood = preferences.mood as MoodType;
+      setCompatibleEffects(getEffectsByMood(mood));
+      
+      // Also filter out incompatible effects from currently selected effects
+      const newSelectedEffects = selectedEffects.filter(effect => 
+        isEffectCompatibleWithMood(effect, mood)
+      );
+      
+      if (newSelectedEffects.length !== selectedEffects.length) {
+        setSelectedEffects(newSelectedEffects);
+      }
+    } else {
+      setCompatibleEffects(EFFECTS);
+    }
+    
     onStepChange(2);
-  }, [preferences, onStepChange]);
+  }, [preferences, onStepChange, selectedEffects]);
 
   const toggleEffect = (effect: string) => {
     if (selectedEffects.includes(effect)) {
