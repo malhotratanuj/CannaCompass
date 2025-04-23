@@ -147,10 +147,10 @@ const EffectsPreferences: FC<EffectsPreferencesProps> = ({
             onClick={() => setLocation('/')}
             variant="ghost"
             size="sm"
-            className="rounded-full w-9 h-9 p-0 mr-3 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+            className="rounded-full w-10 h-10 p-0 mr-3 flex items-center justify-center text-white bg-green-600 hover:bg-green-700 border-2 border-green-700 shadow-sm"
             title="Go back to home"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={24} strokeWidth={2.5} />
           </Button>
           <h2 className="text-2xl font-bold text-gray-900">Fine-tune your experience</h2>
         </div>
