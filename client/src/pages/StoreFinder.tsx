@@ -254,19 +254,19 @@ const StoreFinder: FC<StoreFinderProps> = ({
         onRestart={() => setLocation('/mood-selection')}
       />
       
-      <div className="relative">
-        <div className="absolute top-1 left-1">
+      <div>
+        <div className="mb-4 flex items-center">
           <Button
             onClick={() => setLocation('/')}
             variant="ghost"
             size="sm"
-            className="rounded-full w-9 h-9 p-0 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+            className="rounded-full w-9 h-9 p-0 mr-3 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-200"
             title="Go back to home"
           >
             <ArrowLeft size={20} />
           </Button>
+          <h2 className="text-2xl font-bold text-gray-900">Find Your Strain Nearby</h2>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Find Your Strain Nearby</h2>
         <p className="text-gray-600 mb-6">We'll help you locate dispensaries that carry these strains in your area.</p>
       </div>
       

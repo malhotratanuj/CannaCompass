@@ -100,19 +100,19 @@ const MoodSelection: FC<MoodSelectionProps> = ({
         onRestart={handleRestart}
       />
       
-      <div className="relative mb-8">
-        <div className="absolute top-1 left-1">
+      <div className="mb-8">
+        <div className="mb-4 flex items-center">
           <Button
             onClick={() => setLocation('/')}
             variant="ghost"
             size="sm"
-            className="rounded-full w-9 h-9 p-0 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+            className="rounded-full w-9 h-9 p-0 mr-3 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-200"
             title="Go back to home"
           >
             <ArrowLeft size={20} />
           </Button>
+          <h2 className="text-2xl font-bold text-gray-900">How would you like to feel today?</h2>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">How would you like to feel today?</h2>
         <p className="text-gray-600 mb-6">Select your desired mood or experience to get personalized strain recommendations.</p>
         
         <div id="mood-selection" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">

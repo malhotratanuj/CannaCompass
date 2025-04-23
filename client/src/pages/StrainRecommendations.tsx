@@ -169,21 +169,22 @@ const StrainRecommendations: FC<StrainRecommendationsProps> = ({
         onRestart={handleRestart}
       />
       
-      <div className="relative">
-        <div className="absolute top-1 left-1">
+      <div>
+        <div className="mb-4 flex items-center">
           <Button
             onClick={() => setLocation('/')}
             variant="ghost"
             size="sm"
-            className="rounded-full w-9 h-9 p-0 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+            className="rounded-full w-9 h-9 p-0 mr-3 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-200"
             title="Go back to home"
           >
             <ArrowLeft size={20} />
           </Button>
+          <h2 className="text-2xl font-bold text-gray-900">Your Recommended Strains</h2>
         </div>
         
-        <div className="flex justify-between items-center mb-6 pt-1">
-          <h2 className="text-2xl font-bold text-gray-900">Your Recommended Strains</h2>
+        <div className="flex justify-between items-center mb-4">
+          <div>&nbsp;</div> {/* Empty div for spacing */}
           <div className="flex items-center">
             <span className="mr-2 text-sm text-gray-600">Sort by:</span>
             <Select defaultValue="relevance" onValueChange={handleSortChange}>
