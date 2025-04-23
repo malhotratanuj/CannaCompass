@@ -151,6 +151,9 @@ export interface Dispensary {
     lat: number;
     lng: number;
   };
+  phone?: string;
+  website?: string;
+  placeId?: string;  // Google Places ID
 }
 
 export interface DispensaryInventory {
