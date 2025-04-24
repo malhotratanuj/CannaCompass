@@ -81,7 +81,7 @@ class GooglePlacesService {
       }
       
       // Define search radius
-      const searchRadius = options.radius || 25000; // 25km default radius
+      const searchRadius = options.radius || 50000; // 50km default radius - the max Google Places API allows
       
       // Define multiple search terms to get better coverage
       const searchTerms = [
@@ -90,6 +90,17 @@ class GooglePlacesService {
         'marijuana dispensary',
         'cannabis store',
         'weed store',
+        'pot shop',
+        'cannabis retail',
+        'marijuana store',
+        'legal cannabis',
+        'recreational cannabis',
+        'medical cannabis',
+        
+        // Canadian specific terms
+        'cannabis retail store', 
+        'government cannabis',
+        
         // Brand-specific Canadian terms
         'SQDC', // Quebec
         'OCS', // Ontario
@@ -101,8 +112,14 @@ class GooglePlacesService {
         'Tweed',
         'Canna Cabana',
         'Fire & Flower',
+        'Value Buds',
         'Nova Cannabis',
-        'Dutch Love'
+        'Dutch Love',
+        'Spiritleaf',
+        'Hobo Cannabis',
+        'Superette',
+        'High Tide',
+        'Choom'
       ];
       
       console.log(`Performing multiple searches for dispensaries near ${latitude},${longitude}`);
@@ -170,30 +187,79 @@ class GooglePlacesService {
     try {
       const nearbyUrl = `${this.baseUrl}/nearbysearch/json`;
       
-      // Build the query parameters object
       // Make sure the apiKey is defined as we already checked earlier
       const apiKey = this.apiKey as string;
       
-      const queryParamsObj: Record<string, string> = {
+      // First try with keyword (most specific)
+      let results: GooglePlacesResult[] = [];
+      
+      // Build the query parameters object with keyword
+      const keywordParamsObj: Record<string, string> = {
         location: `${latitude},${longitude}`,
         radius: radius.toString(),
         keyword: keyword,
         key: apiKey
       };
       
-      const queryParams = new URLSearchParams(queryParamsObj);
-      
-      if (pageToken) {
-        queryParams.append('pagetoken', pageToken);
+      // Try with keyword first
+      try {
+        const keywordParams = new URLSearchParams(keywordParamsObj);
+        if (pageToken) {
+          keywordParams.append('pagetoken', pageToken);
+        }
+        
+        const keywordResponse = await axios.get<GooglePlacesResponse>(
+          `${nearbyUrl}?${keywordParams.toString()}`
+        );
+        
+        if (keywordResponse.data.status === 'OK') {
+          results = keywordResponse.data.results || [];
+          console.log(`Found ${results.length} results with keyword "${keyword}"`);
+        }
+      } catch (keywordErr) {
+        console.error(`Error with keyword search for "${keyword}":`, keywordErr);
       }
       
-      const response = await axios.get<GooglePlacesResponse>(`${nearbyUrl}?${queryParams.toString()}`);
-      
-      if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
-        throw new Error(`Google Places API error: ${response.data.status}`);
+      // If we have results from keyword search, just return those
+      if (results.length > 0) {
+        return results;
       }
       
-      return response.data.results || [];
+      // Try with type=store and name parameter (less specific, fallback)
+      try {
+        const typeParamsObj: Record<string, string> = {
+          location: `${latitude},${longitude}`,
+          radius: radius.toString(),
+          type: 'store',
+          name: keyword,
+          key: apiKey
+        };
+        
+        const typeParams = new URLSearchParams(typeParamsObj);
+        if (pageToken) {
+          typeParams.append('pagetoken', pageToken);
+        }
+        
+        const typeResponse = await axios.get<GooglePlacesResponse>(
+          `${nearbyUrl}?${typeParams.toString()}`
+        );
+        
+        if (typeResponse.data.status === 'OK') {
+          const typeResults = typeResponse.data.results || [];
+          console.log(`Found ${typeResults.length} results with type=store and name="${keyword}"`);
+          
+          // Combine results
+          for (const result of typeResults) {
+            if (!results.some(r => r.place_id === result.place_id)) {
+              results.push(result);
+            }
+          }
+        }
+      } catch (typeErr) {
+        console.error(`Error with type search for "${keyword}":`, typeErr);
+      }
+      
+      return results;
     } catch (error) {
       console.error(`Error in performSingleSearch with keyword "${keyword}":`, error);
       return []; // Return empty array instead of throwing to continue with other searches
@@ -351,13 +417,23 @@ class GooglePlacesService {
       
       // For Canadian postal codes, add "Canada" to improve geocoding accuracy
       // Format: A1A 1A1 (Letter-Number-Letter Space/Dash/Nothing Number-Letter-Number)
-      const isCanadianPostalCode = /^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/i.test(address.trim());
+      const cleanAddress = address.trim();
+      const isCanadianPostalCode = /^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/i.test(cleanAddress);
+      
+      // Determine if this looks like a Canadian address based on province abbreviations
+      const hasCanadianProvince = /\b(BC|AB|SK|MB|ON|QC|NB|NS|PE|NL|YT|NT|NU)\b/i.test(cleanAddress);
       
       // Create a more accurate search query
-      let searchAddress = address;
+      let searchAddress = cleanAddress;
+      
       if (isCanadianPostalCode) {
         console.log("Canadian postal code detected, enhancing geocoding query");
-        searchAddress = `${address.trim()} Canada`;
+        // Format postal code consistently as "A1A 1A1" with a space
+        const formattedPostal = cleanAddress.replace(/^([A-Z][0-9][A-Z])\s*([0-9][A-Z][0-9])$/i, "$1 $2").toUpperCase();
+        searchAddress = `${formattedPostal} Canada`;
+      } else if (hasCanadianProvince) {
+        console.log("Canadian province detected, enhancing geocoding query");
+        searchAddress = `${cleanAddress}, Canada`;
       }
       
       const geocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json';

@@ -273,8 +273,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         address
       };
 
-      // Default radius is 10 miles
-      const radius = req.body.radius || 10;
+      // Default radius is 25 km (Google Places API works in meters, so we'll convert to meters in finder)
+      const radius = req.body.radius || 25;
 
       // Use our enhanced store finder to get dynamic results
       const dispensaries = await findNearbyDispensaries(
