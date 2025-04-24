@@ -64,6 +64,11 @@ export interface IStorage {
   deleteComment(commentId: number, userId: number): Promise<boolean>;
   likeComment(commentId: number, userId: number): Promise<boolean>;
   
+  // Password reset functionality
+  setPasswordResetToken(userId: number, token: string, expiry: Date): Promise<boolean>;
+  verifyPasswordResetToken(token: string): Promise<boolean>;
+  resetPasswordWithToken(token: string, newPasswordHash: string): Promise<boolean>;
+  
   // Session store for authentication
   sessionStore: session.Store;
 }
@@ -83,6 +88,8 @@ export class MemStorage implements IStorage {
   currentId: number;
   sessionStore: session.Store;
 
+  private resetTokensMap: Map<string, { userId: number, expiry: Date }>;
+  
   constructor() {
     this.users = new Map();
     this.userPreferencesMap = new Map();
@@ -91,6 +98,7 @@ export class MemStorage implements IStorage {
     this.reviewsMap = new Map();
     this.discussionsMap = new Map();
     this.discussionCommentsMap = new Map();
+    this.resetTokensMap = new Map();
     this.currentId = 1;
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // prune expired entries every 24h
@@ -449,6 +457,60 @@ export class MemStorage implements IStorage {
       updatedAt: new Date()
     };
     
+
+  // Password reset functionality implementation
+  async setPasswordResetToken(userId: number, token: string, expiry: Date): Promise<boolean> {
+    try {
+      this.resetTokensMap.set(token, { userId, expiry });
+      return true;
+    } catch (error) {
+      console.error("Error setting password reset token:", error);
+      return false;
+    }
+  }
+
+  async verifyPasswordResetToken(token: string): Promise<boolean> {
+    try {
+      const tokenData = this.resetTokensMap.get(token);
+      if (!tokenData) return false;
+      
+      // Check if token is expired
+      if (tokenData.expiry < new Date()) {
+        this.resetTokensMap.delete(token); // Clean up expired token
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error verifying password reset token:", error);
+      return false;
+    }
+  }
+
+  async resetPasswordWithToken(token: string, newPasswordHash: string): Promise<boolean> {
+    try {
+      const tokenData = this.resetTokensMap.get(token);
+      if (!tokenData || tokenData.expiry < new Date()) {
+        return false;
+      }
+      
+      const user = this.users.get(tokenData.userId);
+      if (!user) return false;
+      
+      // Update the user's password
+      user.password = newPasswordHash;
+      this.users.set(user.id, user);
+      
+      // Remove the used token
+      this.resetTokensMap.delete(token);
+      
+      return true;
+    } catch (error) {
+      console.error("Error resetting password with token:", error);
+      return false;
+    }
+  }
+
     // Update in reviews map
     this.reviewsMap.set(reviewId, updatedReview);
     

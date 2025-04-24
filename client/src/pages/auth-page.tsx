@@ -16,7 +16,7 @@ import { useState } from "react";
 
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const forgotPasswordSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -109,6 +109,7 @@ const loginSchema = z.object({
 });
 
 const registerSchema = insertUserSchema.extend({
+  email: z.string().email("Please enter a valid email address"),
   confirmPassword: z.string(),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -288,6 +289,7 @@ function RegisterForm({ onSubmit, isLoading }: { onSubmit: (values: RegisterForm
     resolver: zodResolver(registerSchema),
     defaultValues: {
       username: "",
+      email: "",
       password: "",
       confirmPassword: "",
     },
@@ -320,6 +322,20 @@ function RegisterForm({ onSubmit, isLoading }: { onSubmit: (values: RegisterForm
               <FormLabel>Username</FormLabel>
               <FormControl>
                 <Input placeholder="Choose a username" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="Your email address" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

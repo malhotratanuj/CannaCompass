@@ -20,6 +20,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient"; // Import the centralized queryClient
+import ResetPasswordPage from "@/pages/reset-password"; // Added import
 
 function App() {
   const [location] = useLocation();
@@ -35,12 +36,12 @@ function App() {
   });
   const [recommendedStrains, setRecommendedStrains] = useState<Strain[]>([]);
   const [selectedStrains, setSelectedStrains] = useState<Strain[]>([]);
-  
+
   // For debugging purposes
   useEffect(() => {
     console.log('Current location:', location);
   }, [location]);
-  
+
   // Show welcome modal on first visit
   useEffect(() => {
     if (location === '/' && !localStorage.getItem('tutorialShown')) {
@@ -88,7 +89,7 @@ function App() {
           <TutorialProvider>
             <div className="min-h-screen flex flex-col bg-gray-50 text-gray-900">
               <Header />
-              
+
               <main className="flex-grow">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                   <Switch>
@@ -144,14 +145,15 @@ function App() {
                       component={StrainDetail} 
                     />
                     <Route path="/auth" component={AuthPage} />
+                    <Route path="/reset-password" component={ResetPasswordPage} /> {/* Added route */}
                     <Route component={NotFound} />
                   </Switch>
                 </div>
               </main>
-              
+
               <Footer />
               <Toaster />
-              
+
               {showPrivacyConsent && (
                 <PrivacyConsent 
                   onAccept={() => setShowPrivacyConsent(false)}
