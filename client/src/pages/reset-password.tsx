@@ -110,6 +110,10 @@ export default function ResetPasswordPage() {
     }
   };
 
+  if (redirectToAuth) {
+    return <Redirect to="/auth" />;
+  }
+
   if (isVerifying) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
@@ -142,7 +146,7 @@ export default function ResetPasswordPage() {
                 Please request a new password reset link from the login page.
               </AlertDescription>
             </Alert>
-            <Button className="w-full" onClick={() => navigate("/auth")}>
+            <Button className="w-full" onClick={() => setRedirectToAuth(true)}>
               Return to Login
             </Button>
           </CardContent>
