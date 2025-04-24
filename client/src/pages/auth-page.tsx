@@ -14,6 +14,94 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { useCelebration } from "@/contexts/CelebrationContext";
 import { useState } from "react";
 
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
+
+const forgotPasswordSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+});
+
+type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+
+function ForgotPasswordForm({ onClose }: { onClose: () => void }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  const form = useForm<ForgotPasswordFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      username: "",
+    },
+  });
+
+  const onSubmit = async (values: ForgotPasswordFormValues) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+      
+      if (!response.ok) throw new Error('Failed to process request');
+      
+      setMessage('If an account exists with this username, you will receive a password reset email.');
+      setTimeout(() => {
+        onClose();
+        toast({
+          title: "Request sent",
+          description: "Check your email for password reset instructions.",
+        });
+      }, 2000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to process your request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {message ? (
+          <p className="text-sm text-center text-emerald-600">{message}</p>
+        ) : (
+          <>
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter your username" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                </>
+              ) : (
+                "Reset Password"
+              )}
+            </Button>
+          </>
+        )}
+      </form>
+    </Form>
+  );
+}
+
 // Create the zod schemas for login and registration
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -33,6 +121,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function AuthPage() {
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const { celebrateMilestone } = useCelebration();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // If user is already logged in, redirect to home page
   if (user) {
@@ -106,6 +195,16 @@ export default function AuthPage() {
 function LoginForm({ onSubmit, isLoading }: { onSubmit: (values: LoginFormValues) => void, isLoading: boolean }) {
   const [loginError, setLoginError] = useState<string | null>(null);
   const form = useForm<LoginFormValues>({
+
+      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+          </DialogHeader>
+          <ForgotPasswordForm onClose={() => setShowForgotPassword(false)} />
+        </DialogContent>
+      </Dialog>
+
     resolver: zodResolver(loginSchema),
     defaultValues: {
       username: "",
@@ -160,7 +259,7 @@ function LoginForm({ onSubmit, isLoading }: { onSubmit: (values: LoginFormValues
           )}
         />
         
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" className="w-full mb-4" disabled={isLoading}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing In...
@@ -169,6 +268,15 @@ function LoginForm({ onSubmit, isLoading }: { onSubmit: (values: LoginFormValues
             "Sign In"
           )}
         </Button>
+        <div className="text-center">
+          <button 
+            type="button"
+            onClick={() => setShowForgotPassword(true)}
+            className="text-sm text-emerald-600 hover:text-emerald-700"
+          >
+            Forgot your password?
+          </button>
+        </div>
       </form>
     </Form>
   );
