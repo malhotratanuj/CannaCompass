@@ -2,6 +2,8 @@ import axios from 'axios';
 import { UserLocation, Dispensary } from '@shared/schema';
 import { strains } from './strainData';
 import { dispensaries as staticDispensaries } from './dispensaryData';
+import { googlePlacesAdapter } from './googlePlacesAdapter';
+import { googlePlacesService } from './googlePlacesService';
 
 // Flag to track if browser-use automation service is available
 let browserUseAvailable = false;
@@ -18,7 +20,7 @@ export async function startStoreFinderService(): Promise<void> {
       browserUseAvailable = true;
     }
   } catch (error) {
-    console.log("Browser automation service not available. Using static dispensary data.");
+    console.log("Browser automation service not available. Using Google Places API for store search.");
     browserUseAvailable = false;
   }
 
@@ -42,12 +44,52 @@ export async function findNearbyDispensaries(
       return strain ? strain.name : '';
     }).filter(name => name);
 
-    // Extract approximate coordinates from postal/zip code patterns
+    // FIRST PRIORITY: Try to use Google Places API directly via our adapter
+    try {
+      // If we have an address but not coordinates, geocode it using Google Places API
+      if (location.address && (!location.latitude || location.latitude === 0 || !location.longitude || location.longitude === 0)) {
+        console.log(`Geocoding address using Google Places API: ${location.address}`);
+        try {
+          // Use the proper geocoding method
+          const coords = await googlePlacesService.geocodeAddress(location.address);
+          if (coords) {
+            location.latitude = coords.lat;
+            location.longitude = coords.lng;
+            console.log(`Successfully geocoded address to coordinates: ${coords.lat}, ${coords.lng}`);
+          }
+        } catch (geocodeError) {
+          console.error("Error geocoding address:", geocodeError);
+        }
+      }
+
+      // Now use Google Places API to find nearby dispensaries
+      if (location.latitude && location.longitude) {
+        console.log(`Using Google Places API to find dispensaries near ${location.latitude}, ${location.longitude}`);
+        const googleDispensaries = await googlePlacesAdapter.findNearbyDispensaries(
+          location,
+          radius,
+          selectedStrainIds
+        );
+
+        if (googleDispensaries && googleDispensaries.length > 0) {
+          console.log(`Successfully found ${googleDispensaries.length} dispensaries using Google Places API`);
+          return googleDispensaries;
+        } else {
+          console.log("No dispensaries found with Google Places API, will try alternative methods");
+        }
+      }
+    } catch (googleError) {
+      console.error("Error using Google Places API:", googleError);
+    }
+
+    // If we get here, try to extract approximate coordinates from postal/zip code patterns
+    // This is a fallback only if Google Places API geocoding failed or isn't available
     if (location.address && (!location.latitude || !location.longitude)) {
       const cleanPostal = location.address.trim().toUpperCase();
 
       // Canadian postal code pattern (Letter-Number-Letter Number-Letter-Number)
       if (/^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/.test(cleanPostal)) {
+        console.log("Canadian postal code detected, will try to approximate location");
         const fsa = cleanPostal.substring(0, 3); // Forward Sortation Area
 
         // Rough coordinate mapping for major FSA areas
@@ -71,6 +113,7 @@ export async function findNearbyDispensaries(
         // If we have specific coordinates for this FSA, use them
         if (fsaCoords[fsa]) {
           [location.latitude, location.longitude] = fsaCoords[fsa];
+          console.log(`Using coordinates for FSA ${fsa}: ${location.latitude}, ${location.longitude}`);
         } else {
           // For unknown FSAs, estimate based on first letter
           const provinceCoords: { [key: string]: [number, number] } = {
@@ -97,6 +140,7 @@ export async function findNearbyDispensaries(
           const firstLetter = cleanPostal.charAt(0);
           if (provinceCoords[firstLetter]) {
             [location.latitude, location.longitude] = provinceCoords[firstLetter];
+            console.log(`Using coordinates for province ${firstLetter}: ${location.latitude}, ${location.longitude}`);
           }
         }
       }
