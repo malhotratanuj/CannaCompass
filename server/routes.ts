@@ -282,6 +282,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         radius,
         strainIds
       );
+      
+      // Log the number of dispensaries found and show the first few for debugging
+      console.log(`Successfully found ${dispensaries.length} dispensaries through Google Places API`);
+      
+      if (dispensaries.length > 0) {
+        dispensaries.slice(0, 3).forEach((d, i) => {
+          console.log(`  ${i+1}. ${d.name} - ${d.address} (${d.distance.toFixed(1)}km)`);
+        });
+      } else {
+        console.log("No dispensaries found in the given area. Try expanding search radius.");
+      }
 
       return res.json({ dispensaries });
     } catch (error) {
