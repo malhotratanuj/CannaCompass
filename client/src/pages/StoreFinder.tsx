@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, MapPin, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Strain, Dispensary, UserLocation } from '@shared/schema';
 import { StoreFinderFilters, DeliveryOption } from '@/types';
@@ -349,14 +349,14 @@ const StoreFinder: FC<StoreFinderProps> = ({
                 </Label>
                 <Select defaultValue="25" onValueChange={handleDistanceChange}>
                   <SelectTrigger id="distance" className="w-full">
-                    <SelectValue placeholder="25 miles" />
+                    <SelectValue placeholder="25 km" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="5">5 miles</SelectItem>
-                    <SelectItem value="10">10 miles</SelectItem>
-                    <SelectItem value="15">15 miles</SelectItem>
-                    <SelectItem value="25">25 miles</SelectItem>
-                    <SelectItem value="50">50 miles</SelectItem>
+                    <SelectItem value="5">5 km</SelectItem>
+                    <SelectItem value="10">10 km</SelectItem>
+                    <SelectItem value="15">15 km</SelectItem>
+                    <SelectItem value="25">25 km</SelectItem>
+                    <SelectItem value="50">50 km</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -401,11 +401,20 @@ const StoreFinder: FC<StoreFinderProps> = ({
       )}
       
       {userLocation && !isLoading && !isError && sortedDispensaries.length === 0 && (
-        <Alert className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            No dispensaries found within {filters.maxDistance} miles of your location. Try increasing the distance or changing your delivery preferences.
-          </AlertDescription>
+        <Alert variant="destructive" className="mb-6 border-red-200 bg-red-50">
+          <AlertCircle className="h-5 w-5 text-red-600" />
+          <div className="ml-2">
+            <AlertTitle className="font-semibold text-red-700">No dispensaries found</AlertTitle>
+            <AlertDescription className="text-sm mt-1">
+              We couldn't find any dispensaries within {filters.maxDistance} km of your location that have your selected strains. Try these options:
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Increase the search radius to 50km</li>
+                <li>Try a different address or postal code</li>
+                <li>Enter a major city instead of a specific address</li>
+                <li>For Canadian users: try including your province (BC, ON, QC, etc.)</li>
+              </ul>
+            </AlertDescription>
+          </div>
         </Alert>
       )}
       
