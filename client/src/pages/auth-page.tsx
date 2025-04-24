@@ -1,7 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,14 +12,29 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { useCelebration } from "@/contexts/CelebrationContext";
 import { useState } from "react";
 
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+
+// Create the zod schemas for login and registration
+const loginSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const registerSchema = insertUserSchema.extend({
+  email: z.string().email("Please enter a valid email address"),
+  confirmPassword: z.string(),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
 const forgotPasswordSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
 });
 
+type LoginFormValues = z.infer<typeof loginSchema>;
+type RegisterFormValues = z.infer<typeof registerSchema>;
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 function ForgotPasswordForm({ onClose }: { onClose: () => void }) {
@@ -102,110 +115,11 @@ function ForgotPasswordForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-// Create the zod schemas for login and registration
-const loginSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-const registerSchema = insertUserSchema.extend({
-  email: z.string().email("Please enter a valid email address"),
-  confirmPassword: z.string(),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-type RegisterFormValues = z.infer<typeof registerSchema>;
-
-export default function AuthPage() {
-  const { user, isLoading, loginMutation, registerMutation } = useAuth();
-  const { celebrateMilestone } = useCelebration();
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-
-  // If user is already logged in, redirect to home page
-  if (user) {
-    // Trigger celebration if it's the first login from this session
-    const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true';
-    const justRegistered = sessionStorage.getItem('justRegistered') === 'true';
-    
-    if (justRegistered) {
-      celebrateMilestone('account_created');
-      sessionStorage.removeItem('justRegistered');
-    } else if (justLoggedIn) {
-      celebrateMilestone('first_login');
-      sessionStorage.removeItem('justLoggedIn');
-    }
-    
-    return <Redirect to="/" />;
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
-      <div className="grid md:grid-cols-2 gap-8 w-full max-w-6xl bg-white rounded-xl shadow-xl overflow-hidden">
-        {/* Hero section */}
-        <div className="hidden md:flex flex-col items-center justify-center p-10 bg-gradient-to-br from-emerald-500 to-green-700 text-white">
-          <h1 className="text-4xl font-bold mb-4 text-center">Cannabis Strain Finder</h1>
-          <p className="text-lg mb-8 text-center">
-            Discover the perfect cannabis strain for your needs and find it at nearby dispensaries.
-          </p>
-          <ul className="space-y-2">
-            <li className="flex items-center">
-              <span className="mr-2">✓</span> Personalized strain recommendations
-            </li>
-            <li className="flex items-center">
-              <span className="mr-2">✓</span> Find nearby dispensaries
-            </li>
-            <li className="flex items-center">
-              <span className="mr-2">✓</span> Save your favorite strains
-            </li>
-            <li className="flex items-center">
-              <span className="mr-2">✓</span> Compare prices and availability
-            </li>
-          </ul>
-        </div>
-
-        {/* Auth forms */}
-        <div className="p-8">
-          <h2 className="text-2xl font-bold text-center mb-2 md:hidden">Cannabis Strain Finder</h2>
-          <p className="text-center text-muted-foreground mb-6 md:hidden">
-            Sign in or create an account to get started
-          </p>
-          
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <LoginForm isLoading={loginMutation.isPending} onSubmit={loginMutation.mutate} />
-            </TabsContent>
-            
-            <TabsContent value="register">
-              <RegisterForm isLoading={registerMutation.isPending} onSubmit={registerMutation.mutate} />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function LoginForm({ onSubmit, isLoading }: { onSubmit: (values: LoginFormValues) => void, isLoading: boolean }) {
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  
   const form = useForm<LoginFormValues>({
-
-      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
-          </DialogHeader>
-          <ForgotPasswordForm onClose={() => setShowForgotPassword(false)} />
-        </DialogContent>
-      </Dialog>
-
     resolver: zodResolver(loginSchema),
     defaultValues: {
       username: "",
@@ -223,68 +137,80 @@ function LoginForm({ onSubmit, isLoading }: { onSubmit: (values: LoginFormValues
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        {loginError && (
-          <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4 flex items-start">
-            <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
-            <span className="text-amber-800 text-sm">{loginError}</span>
+    <>
+      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+          </DialogHeader>
+          <ForgotPasswordForm onClose={() => setShowForgotPassword(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          {loginError && (
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4 flex items-start">
+              <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
+              <span className="text-amber-800 text-sm">{loginError}</span>
+            </div>
+          )}
+          
+          <FormField
+            control={form.control}
+            name="username"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Username</FormLabel>
+                <FormControl>
+                  <Input placeholder="Your username" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Your password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <Button type="submit" className="w-full mb-4" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing In...
+              </>
+            ) : (
+              "Sign In"
+            )}
+          </Button>
+          <div className="text-center">
+            <button 
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className="text-sm text-emerald-600 hover:text-emerald-700"
+            >
+              Forgot your password?
+            </button>
           </div>
-        )}
-        
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder="Your username" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="Your password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <Button type="submit" className="w-full mb-4" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing In...
-            </>
-          ) : (
-            "Sign In"
-          )}
-        </Button>
-        <div className="text-center">
-          <button 
-            type="button"
-            onClick={() => setShowForgotPassword(true)}
-            className="text-sm text-emerald-600 hover:text-emerald-700"
-          >
-            Forgot your password?
-          </button>
-        </div>
-      </form>
-    </Form>
+        </form>
+      </Form>
+    </>
   );
 }
 
 function RegisterForm({ onSubmit, isLoading }: { onSubmit: (values: RegisterFormValues) => void, isLoading: boolean }) {
   const [registerError, setRegisterError] = useState<string | null>(null);
+  
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -381,5 +307,78 @@ function RegisterForm({ onSubmit, isLoading }: { onSubmit: (values: RegisterForm
         </Button>
       </form>
     </Form>
+  );
+}
+
+export default function AuthPage() {
+  const { user, isLoading, loginMutation, registerMutation } = useAuth();
+  const { celebrateMilestone } = useCelebration();
+
+  // If user is already logged in, redirect to home page
+  if (user) {
+    // Trigger celebration if it's the first login from this session
+    const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true';
+    const justRegistered = sessionStorage.getItem('justRegistered') === 'true';
+    
+    if (justRegistered) {
+      celebrateMilestone('account_created');
+      sessionStorage.removeItem('justRegistered');
+    } else if (justLoggedIn) {
+      celebrateMilestone('first_login');
+      sessionStorage.removeItem('justLoggedIn');
+    }
+    
+    return <Redirect to="/" />;
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
+      <div className="grid md:grid-cols-2 gap-8 w-full max-w-6xl bg-white rounded-xl shadow-xl overflow-hidden">
+        {/* Hero section */}
+        <div className="hidden md:flex flex-col items-center justify-center p-10 bg-gradient-to-br from-emerald-500 to-green-700 text-white">
+          <h1 className="text-4xl font-bold mb-4 text-center">Cannabis Strain Finder</h1>
+          <p className="text-lg mb-8 text-center">
+            Discover the perfect cannabis strain for your needs and find it at nearby dispensaries.
+          </p>
+          <ul className="space-y-2">
+            <li className="flex items-center">
+              <span className="mr-2">✓</span> Personalized strain recommendations
+            </li>
+            <li className="flex items-center">
+              <span className="mr-2">✓</span> Find nearby dispensaries
+            </li>
+            <li className="flex items-center">
+              <span className="mr-2">✓</span> Save your favorite strains
+            </li>
+            <li className="flex items-center">
+              <span className="mr-2">✓</span> Compare prices and availability
+            </li>
+          </ul>
+        </div>
+
+        {/* Auth forms */}
+        <div className="p-8">
+          <h2 className="text-2xl font-bold text-center mb-2 md:hidden">Cannabis Strain Finder</h2>
+          <p className="text-center text-muted-foreground mb-6 md:hidden">
+            Sign in or create an account to get started
+          </p>
+          
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="login">
+              <LoginForm isLoading={loginMutation.isPending} onSubmit={loginMutation.mutate} />
+            </TabsContent>
+            
+            <TabsContent value="register">
+              <RegisterForm isLoading={registerMutation.isPending} onSubmit={registerMutation.mutate} />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </div>
   );
 }

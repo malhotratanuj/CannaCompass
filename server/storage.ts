@@ -457,6 +457,19 @@ export class MemStorage implements IStorage {
       updatedAt: new Date()
     };
     
+    // Update in reviews map
+    this.reviewsMap.set(reviewId, updatedReview);
+    
+    // Update in strain reviews map
+    const strainReviews = this.strainReviewsMap.get(existingReview.strainId) || [];
+    const reviewIndex = strainReviews.findIndex(r => r.id === reviewId);
+    if (reviewIndex !== -1) {
+      strainReviews[reviewIndex] = updatedReview;
+      this.strainReviewsMap.set(existingReview.strainId, strainReviews);
+    }
+    
+    return updatedReview;
+  }
 
   // Password reset functionality implementation
   async setPasswordResetToken(userId: number, token: string, expiry: Date): Promise<boolean> {
@@ -511,35 +524,6 @@ export class MemStorage implements IStorage {
     }
   }
 
-  // Update in reviews map
-  async updateReview(reviewId: number, userId: number, reviewUpdates: Partial<InsertStrainReview>): Promise<StrainReview | undefined> {
-    const existingReview = this.reviewsMap.get(reviewId);
-    
-    // Check if review exists and belongs to the user
-    if (!existingReview || existingReview.userId !== userId) {
-      return undefined;
-    }
-    
-    // Update the review
-    const updatedReview: StrainReview = {
-      ...existingReview,
-      ...reviewUpdates,
-      updatedAt: new Date()
-    };
-    
-    // Update in reviews map
-    this.reviewsMap.set(reviewId, updatedReview);
-    
-    // Update in strain reviews map
-    const strainReviews = this.strainReviewsMap.get(existingReview.strainId) || [];
-    const updatedStrainReviews = strainReviews.map(review => 
-      review.id === reviewId ? updatedReview : review
-    );
-    this.strainReviewsMap.set(existingReview.strainId, updatedStrainReviews);
-    
-    return updatedReview;
-  }
-  
   async deleteReview(reviewId: number, userId: number): Promise<boolean> {
     const existingReview = this.reviewsMap.get(reviewId);
     

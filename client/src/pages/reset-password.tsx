@@ -4,9 +4,9 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate, useLocation } from "wouter";
+import { useLocation, Redirect } from "wouter";
 import { Loader2 } from "lucide-react";
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "@/lib/queryClient";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,7 @@ type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPasswordPage() {
   const [location] = useLocation();
-  const navigate = useNavigate();
+  const [redirectToAuth, setRedirectToAuth] = useState(false);
   const { toast } = useToast();
   const [token, setToken] = useState<string | null>(null);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
@@ -91,7 +91,7 @@ export default function ResetPasswordPage() {
           title: "Success",
           description: "Your password has been reset successfully.",
         });
-        navigate("/auth");
+        setRedirectToAuth(true);
       } else {
         toast({
           title: "Error",
