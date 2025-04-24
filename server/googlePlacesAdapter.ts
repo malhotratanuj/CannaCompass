@@ -64,10 +64,11 @@ export class GooglePlacesStorageAdapter {
         return storage.findNearbyDispensaries(location, radius);
       }
       
-      // Get dispensaries from Google Places API
+      // Get dispensaries from Google Places API - no need to specify keyword 
+      // as our enhanced implementation now does multiple searches with different keywords
+      console.log("Finding nearby dispensaries using dynamic store finder...");
       const dispensaries = await googlePlacesService.findNearbyDispensaries(lat, lng, {
-        radius: radius * 1000, // Convert km to meters
-        keyword: 'cannabis marijuana dispensary store'
+        radius: radius * 1000 // Convert km to meters
       });
       
       // If we have strain IDs, we need to enhance dispensaries with inventory data

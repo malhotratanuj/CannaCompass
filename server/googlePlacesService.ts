@@ -11,7 +11,7 @@ interface GooglePlacesGeometry {
 }
 
 interface GooglePlacesPhoto {
-  photo_reference: string;
+  photo_reference?: string;
   height: number;
   width: number;
 }
@@ -68,10 +68,11 @@ class GooglePlacesService {
 
   /**
    * Find nearby cannabis dispensaries based on location
+   * This performs multiple searches with different keywords to get better results
    */
   public async findNearbyDispensaries(
     latitude: number, 
-    longitude: number, 
+    longitude: number,
     options: SearchOptions = {}
   ): Promise<Dispensary[]> {
     try {
@@ -79,39 +80,111 @@ class GooglePlacesService {
         throw new Error('Google Places API key is not configured');
       }
       
-      // Default options - we need to be careful with search terms to get accurate results
-      // Note: Google Places API limits radius to 50,000 meters maximum
-      const searchOptions: {
-        radius: number;
-        type?: string;  // Make type optional
-        keyword: string;
-        pageToken?: string;
-      } = {
-        radius: options.radius || 25000, // Increased to 25km default radius to find more results
-        // Use broader keywords with Cannabis-specific Canadian terms
-        keyword: options.keyword || 'cannabis marijuana dispensary weed pot shop SQDC OCS',
-        pageToken: options.pageToken
-      };
+      // Define search radius
+      const searchRadius = options.radius || 25000; // 25km default radius
       
+      // Define multiple search terms to get better coverage
+      const searchTerms = [
+        // Common terms for dispensaries
+        'cannabis dispensary',
+        'marijuana dispensary',
+        'cannabis store',
+        'weed store',
+        // Brand-specific Canadian terms
+        'SQDC', // Quebec
+        'OCS', // Ontario
+        'Cannabis NB', // New Brunswick
+        'NSLC Cannabis', // Nova Scotia
+        'AGLC', // Alberta
+        'BC Cannabis Stores', // British Columbia
+        'Tokyo Smoke',
+        'Tweed',
+        'Canna Cabana',
+        'Fire & Flower',
+        'Nova Cannabis',
+        'Dutch Love'
+      ];
+      
+      console.log(`Performing multiple searches for dispensaries near ${latitude},${longitude}`);
+      
+      // Store all results
+      const allResults: GooglePlacesResult[] = [];
+      const uniquePlaceIds = new Set<string>();
+      
+      // Perform a search for each term
+      for (const term of searchTerms) {
+        try {
+          const results = await this.performSingleSearch(
+            latitude, 
+            longitude, 
+            searchRadius, 
+            term, 
+            options.pageToken
+          );
+          
+          // Add unique results to our collection
+          for (const result of results) {
+            if (!uniquePlaceIds.has(result.place_id)) {
+              uniquePlaceIds.add(result.place_id);
+              allResults.push(result);
+            }
+          }
+          
+          console.log(`Found ${results.length} results with term '${term}'`);
+          
+          // Don't make too many requests too quickly
+          if (searchTerms.indexOf(term) < searchTerms.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        } catch (err) {
+          console.error(`Error searching with term "${term}":`, err);
+          // Continue with other search terms even if one fails
+        }
+      }
+      
+      console.log(`Found ${allResults.length} unique dispensaries in total`);
+      
+      // Transform results to Dispensary format
+      const dispensaries = await Promise.all(
+        allResults.map(async (place) => this.convertToDispensary(place, latitude, longitude))
+      );
+      
+      return dispensaries;
+    } catch (error) {
+      console.error('Error finding nearby dispensaries:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Perform a single search with the Google Places API
+   * Helper method for findNearbyDispensaries
+   */
+  private async performSingleSearch(
+    latitude: number,
+    longitude: number,
+    radius: number,
+    keyword: string,
+    pageToken?: string
+  ): Promise<GooglePlacesResult[]> {
+    try {
       const nearbyUrl = `${this.baseUrl}/nearbysearch/json`;
       
       // Build the query parameters object
+      // Make sure the apiKey is defined as we already checked earlier
+      const apiKey = this.apiKey as string;
+      
       const queryParamsObj: Record<string, string> = {
         location: `${latitude},${longitude}`,
-        radius: searchOptions.radius.toString(),
-        keyword: searchOptions.keyword,
-        key: this.apiKey
+        radius: radius.toString(),
+        keyword: keyword,
+        key: apiKey
       };
-      
-      // Add type parameter only if it exists
-      if (searchOptions.type) {
-        queryParamsObj.type = searchOptions.type;
-      }
       
       const queryParams = new URLSearchParams(queryParamsObj);
       
-      if (searchOptions.pageToken) {
-        queryParams.append('pagetoken', searchOptions.pageToken);
+      if (pageToken) {
+        queryParams.append('pagetoken', pageToken);
       }
       
       const response = await axios.get<GooglePlacesResponse>(`${nearbyUrl}?${queryParams.toString()}`);
@@ -120,15 +193,10 @@ class GooglePlacesService {
         throw new Error(`Google Places API error: ${response.data.status}`);
       }
       
-      // Transform results to Dispensary format
-      const dispensaries = await Promise.all(
-        response.data.results.map(async (place) => this.convertToDispensary(place, latitude, longitude))
-      );
-      
-      return dispensaries;
+      return response.data.results || [];
     } catch (error) {
-      console.error('Error finding nearby dispensaries:', error);
-      throw error;
+      console.error(`Error in performSingleSearch with keyword "${keyword}":`, error);
+      return []; // Return empty array instead of throwing to continue with other searches
     }
   }
   
@@ -181,7 +249,7 @@ class GooglePlacesService {
     // Get a photo URL if available
     let photoUrl = 'https://images.unsplash.com/photo-1603909223575-bd6bbca6e07b?w=800&auto=format&fit=crop';
     
-    if (place.photos && place.photos.length > 0 && this.apiKey) {
+    if (place.photos && place.photos.length > 0 && this.apiKey && place.photos[0].photo_reference) {
       photoUrl = `${this.baseUrl}/photo?maxwidth=800&photoreference=${place.photos[0].photo_reference}&key=${this.apiKey}`;
     }
     
