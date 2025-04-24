@@ -81,23 +81,34 @@ class GooglePlacesService {
       
       // Default options - we need to be careful with search terms to get accurate results
       // Note: Google Places API limits radius to 50,000 meters maximum
-      const searchOptions = {
+      const searchOptions: {
+        radius: number;
+        type?: string;  // Make type optional
+        keyword: string;
+        pageToken?: string;
+      } = {
         radius: options.radius || 25000, // Increased to 25km default radius to find more results
-        // In Canada, many dispensaries are government regulated and not just regular 'store' type
-        type: 'establishment', // Using more generic type to catch more results
-        keyword: options.keyword || 'cannabis dispensary weed marijuana store',
+        // Use broader keywords with Cannabis-specific Canadian terms
+        keyword: options.keyword || 'cannabis marijuana dispensary weed pot shop SQDC OCS',
         pageToken: options.pageToken
       };
       
       const nearbyUrl = `${this.baseUrl}/nearbysearch/json`;
       
-      const queryParams = new URLSearchParams({
+      // Build the query parameters object
+      const queryParamsObj: Record<string, string> = {
         location: `${latitude},${longitude}`,
         radius: searchOptions.radius.toString(),
-        type: searchOptions.type,
         keyword: searchOptions.keyword,
         key: this.apiKey
-      });
+      };
+      
+      // Add type parameter only if it exists
+      if (searchOptions.type) {
+        queryParamsObj.type = searchOptions.type;
+      }
+      
+      const queryParams = new URLSearchParams(queryParamsObj);
       
       if (searchOptions.pageToken) {
         queryParams.append('pagetoken', searchOptions.pageToken);
