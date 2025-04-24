@@ -511,6 +511,22 @@ export class MemStorage implements IStorage {
     }
   }
 
+  // Update in reviews map
+  async updateReview(reviewId: number, userId: number, reviewUpdates: Partial<InsertStrainReview>): Promise<StrainReview | undefined> {
+    const existingReview = this.reviewsMap.get(reviewId);
+    
+    // Check if review exists and belongs to the user
+    if (!existingReview || existingReview.userId !== userId) {
+      return undefined;
+    }
+    
+    // Update the review
+    const updatedReview: StrainReview = {
+      ...existingReview,
+      ...reviewUpdates,
+      updatedAt: new Date()
+    };
+    
     // Update in reviews map
     this.reviewsMap.set(reviewId, updatedReview);
     
