@@ -79,11 +79,13 @@ class GooglePlacesService {
         throw new Error('Google Places API key is not configured');
       }
       
-      // Default options
+      // Default options - we need to be careful with search terms to get accurate results
+      // Note: Google Places API limits radius to 50,000 meters maximum
       const searchOptions = {
-        radius: options.radius || 5000, // 5km default radius
-        type: options.type || 'store',
-        keyword: options.keyword || 'cannabis dispensary marijuana',
+        radius: options.radius || 25000, // Increased to 25km default radius to find more results
+        // In Canada, many dispensaries are government regulated and not just regular 'store' type
+        type: 'establishment', // Using more generic type to catch more results
+        keyword: options.keyword || 'cannabis dispensary weed marijuana store',
         pageToken: options.pageToken
       };
       
@@ -180,6 +182,43 @@ class GooglePlacesService {
       hoursText = "Open now";
     }
     
+    // Determine what type of cannabis store this is based on name/address
+    const amenities = ['Cannabis Store'];
+    
+    // Add delivery as likely amenity for most dispensaries
+    amenities.push('Delivery Available');
+    
+    // Check if the name suggests it's a medical dispensary
+    const isMedical = place.name.toLowerCase().includes('medical') || 
+                     place.name.toLowerCase().includes('med') ||
+                     place.name.toLowerCase().includes('clinic') ||
+                     place.name.toLowerCase().includes('pharmacy') ||
+                     (place.vicinity && place.vicinity.toLowerCase().includes('medical'));
+    
+    // Check if it's likely recreational
+    const isRecreational = place.name.toLowerCase().includes('recreational') ||
+                          place.name.toLowerCase().includes('adult use') ||
+                          place.name.toLowerCase().includes('rec') ||
+                          place.name.toLowerCase().includes('cannabis') ||
+                          place.name.toLowerCase().includes('marijuana');
+    
+    // Add appropriate amenities based on business type
+    if (isMedical) {
+      amenities.push('Medical');
+    }
+    
+    if (isRecreational) {
+      amenities.push('Recreational');
+    }
+    
+    // Add pickup option (most dispensaries offer this)
+    amenities.push('In-Store Pickup');
+    
+    // Add online ordering if they have a website
+    if (place.website) {
+      amenities.push('Online Ordering');
+    }
+
     return {
       id: place.place_id,
       name: place.name,
@@ -195,7 +234,7 @@ class GooglePlacesService {
       hours: hoursText,
       phone: place.formatted_phone_number || '',
       website: place.website || '',
-      amenities: ['Cannabis Store'],
+      amenities: amenities,
       imageUrl: photoUrl,
       inventory: [], // We don't have inventory data from Google Places
       placeId: place.place_id
@@ -231,13 +270,25 @@ class GooglePlacesService {
         throw new Error('Google Places API key is not configured');
       }
       
+      // For Canadian postal codes, add "Canada" to improve geocoding accuracy
+      // Format: A1A 1A1 (Letter-Number-Letter Space/Dash/Nothing Number-Letter-Number)
+      const isCanadianPostalCode = /^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/i.test(address.trim());
+      
+      // Create a more accurate search query
+      let searchAddress = address;
+      if (isCanadianPostalCode) {
+        console.log("Canadian postal code detected, enhancing geocoding query");
+        searchAddress = `${address.trim()} Canada`;
+      }
+      
       const geocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json';
       
       const queryParams = new URLSearchParams({
-        address: address,
+        address: searchAddress,
         key: this.apiKey
       });
       
+      console.log(`Geocoding address: ${searchAddress}`);
       const response = await axios.get(`${geocodeUrl}?${queryParams.toString()}`);
       
       if (response.data.status !== 'OK') {
@@ -249,6 +300,7 @@ class GooglePlacesService {
       }
       
       const location = response.data.results[0].geometry.location;
+      console.log(`Geocoded to coordinates: ${location.lat}, ${location.lng}`);
       return { lat: location.lat, lng: location.lng };
     } catch (error) {
       console.error('Error geocoding address:', error);

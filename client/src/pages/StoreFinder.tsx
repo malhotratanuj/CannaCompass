@@ -43,7 +43,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
   const [filters, setFilters] = useState<StoreFinderFilters>({
     useCurrentLocation: false,
     deliveryOption: 'both',
-    maxDistance: 10,
+    maxDistance: 25, // Increased to 25km to match the server's default
   });
   
   const [address, setAddress] = useState('');
@@ -347,9 +347,9 @@ const StoreFinder: FC<StoreFinderProps> = ({
                 <Label htmlFor="distance" className="block text-sm font-medium text-gray-700 mb-1">
                   Maximum Distance
                 </Label>
-                <Select defaultValue="10" onValueChange={handleDistanceChange}>
+                <Select defaultValue="25" onValueChange={handleDistanceChange}>
                   <SelectTrigger id="distance" className="w-full">
-                    <SelectValue placeholder="10 miles" />
+                    <SelectValue placeholder="25 miles" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="5">5 miles</SelectItem>
