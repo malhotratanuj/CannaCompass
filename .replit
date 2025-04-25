@@ -45,7 +45,20 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "killall -9 node || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Kill Server"
+author = 39300878
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "killall -9 node || true"
 
 [[ports]]
 localPort = 5000
