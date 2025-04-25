@@ -16,7 +16,7 @@ const BottomNavigation: React.FC = () => {
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 z-40">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
       <div className="flex justify-around items-center h-16">
         {navItems.map((item) => (
           <Link 
@@ -24,8 +24,8 @@ const BottomNavigation: React.FC = () => {
             href={item.path}
             className={`flex flex-col items-center justify-center px-3 py-2 rounded-md transition-colors ${
               isActive(item.path) 
-                ? 'text-green-600 dark:text-green-400' 
-                : 'text-gray-600 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-300'
+                ? 'text-green-600' 
+                : 'text-gray-600 hover:text-green-500'
             }`}
           >
             <item.icon size={20} />
