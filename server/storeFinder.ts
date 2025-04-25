@@ -384,6 +384,11 @@ function extractCity(address: string): string {
     // Extract first 3 characters of postal code (Forward Sortation Area)
     const fsa = cleanAddress.substring(0, 3);
 
+    // More specific FSA mapping for Surrey area
+    if (fsa === 'V4N') {
+      return 'Surrey';
+    }
+    
     // Check if it's a specific Toronto postal code we want to handle
     // M6C is St. Clair West area
     if (fsa === 'M6C') {

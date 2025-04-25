@@ -161,10 +161,12 @@ class GooglePlacesService {
       
       console.log(`Found ${allResults.length} unique dispensaries in total`);
       
-      // Transform results to Dispensary format
-      const dispensaries = await Promise.all(
+      // Transform results to Dispensary format and filter out non-cannabis businesses
+      const dispensaries = (await Promise.all(
         allResults.map(async (place) => this.convertToDispensary(place, latitude, longitude))
-      );
+      )).filter(dispensary => dispensary !== null);
+      
+      console.log(`After filtering, ${dispensaries.length} cannabis dispensaries remain`);
       
       return dispensaries;
     } catch (error) {
@@ -327,7 +329,34 @@ class GooglePlacesService {
       hoursText = "Open now";
     }
     
-    // Determine what type of cannabis store this is based on name/address
+    // Determine if this is actually a cannabis store by checking keywords
+    const cannabisKeywords = [
+      'cannabis', 'marijuana', 'dispensary', 'pot', 'weed', 'cbd', 'thc', 
+      'bud', 'green cross', 'medical marijuana', 'recreational', 'chronic'
+    ];
+    
+    // Check if the business name or address contains any cannabis keywords
+    const businessText = (place.name + ' ' + (place.vicinity || '') + ' ' + (place.formatted_address || '')).toLowerCase();
+    const isCannabisStore = cannabisKeywords.some(keyword => businessText.includes(keyword));
+    
+    // Filter out obvious non-cannabis businesses
+    const excludedKeywords = [
+      'bakery', 'cafe', 'coffee', 'restaurant', 'food', 'grocery', 'hotel', 
+      'motel', 'school', 'college', 'university', 'bank', 'church', 'gym',
+      'fitness', 'salon', 'spa', 'pharmacy', 'hospital', 'clinic', 'doctor'
+    ];
+    
+    // Check if the business is one of the excluded types
+    const isExcludedBusiness = excludedKeywords.some(keyword => businessText.includes(keyword));
+    
+    // Skip this place if it's not a cannabis store or is an explicitly excluded type
+    if (!isCannabisStore || isExcludedBusiness) {
+      console.log(`Filtered out non-cannabis business: ${place.name}`);
+      // Return null to indicate this should be filtered out
+      return null as any;
+    }
+    
+    // If we get here, it's likely a cannabis store
     const amenities = ['Cannabis Store'];
     
     // Add delivery as likely amenity for most dispensaries
@@ -336,16 +365,12 @@ class GooglePlacesService {
     // Check if the name suggests it's a medical dispensary
     const isMedical = place.name.toLowerCase().includes('medical') || 
                      place.name.toLowerCase().includes('med') ||
-                     place.name.toLowerCase().includes('clinic') ||
-                     place.name.toLowerCase().includes('pharmacy') ||
                      (place.vicinity && place.vicinity.toLowerCase().includes('medical'));
     
     // Check if it's likely recreational
     const isRecreational = place.name.toLowerCase().includes('recreational') ||
                           place.name.toLowerCase().includes('adult use') ||
-                          place.name.toLowerCase().includes('rec') ||
-                          place.name.toLowerCase().includes('cannabis') ||
-                          place.name.toLowerCase().includes('marijuana');
+                          place.name.toLowerCase().includes('rec');
     
     // Add appropriate amenities based on business type
     if (isMedical) {
