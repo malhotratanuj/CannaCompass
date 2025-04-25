@@ -332,29 +332,70 @@ class GooglePlacesService {
     // Determine if this is actually a cannabis store by checking keywords
     const cannabisKeywords = [
       'cannabis', 'marijuana', 'dispensary', 'pot', 'weed', 'cbd', 'thc', 
-      'bud', 'green cross', 'medical marijuana', 'recreational', 'chronic'
+      'bud', 'green cross', 'medical marijuana', 'recreational', 'chronic',
+      'herb', 'dank', 'kush', 'ocs', 'sqdc', 'nslc cannabis', 'aglc',
+      'tokyo smoke', 'tweed', 'canna cabana', 'fire & flower', 'value buds',
+      'dutch love', 'hobo cannabis', 'spiritleaf', 'nova cannabis',
+      'cannabis store', 'cannabis retail', 'high tide', 'choom'
+    ];
+    
+    // Strong indicators that something is definitely a cannabis store
+    const strongCannabisIndicators = [
+      'dispensary', 'cannabis store', 'marijuana store', 'pot shop',
+      'tokyo smoke', 'tweed', 'canna cabana', 'fire & flower', 'value buds',
+      'dutch love', 'hobo cannabis', 'spiritleaf', 'nova cannabis'
     ];
     
     // Check if the business name or address contains any cannabis keywords
     const businessText = (place.name + ' ' + (place.vicinity || '') + ' ' + (place.formatted_address || '')).toLowerCase();
+    const businessName = place.name.toLowerCase();
+    
+    // Check for cannabis keywords in business text
     const isCannabisStore = cannabisKeywords.some(keyword => businessText.includes(keyword));
+    
+    // Check for strong cannabis indicators in business name (more weight on the name)
+    const hasStrongCannabisIndicator = strongCannabisIndicators.some(keyword => businessName.includes(keyword.toLowerCase()));
     
     // Filter out obvious non-cannabis businesses
     const excludedKeywords = [
       'bakery', 'cafe', 'coffee', 'restaurant', 'food', 'grocery', 'hotel', 
       'motel', 'school', 'college', 'university', 'bank', 'church', 'gym',
-      'fitness', 'salon', 'spa', 'pharmacy', 'hospital', 'clinic', 'doctor'
+      'fitness', 'salon', 'spa', 'hospital', 'clinic', 'doctor', 'dentist',
+      'sweet revenge', 'optical', 'eyewear', 'clothing', 'apparel', 'auto',
+      'car', 'repair', 'mechanic', 'barber', 'beauty', 'hair', 'nail', 
+      'pet', 'animal', 'veterinary', 'laundry', 'dry clean'
+    ];
+    
+    // Definitely not cannabis businesses
+    const definitelyNotCannabis = [
+      'sweet revenge bakery', 'sweet revenge cafe', 'mcdonald', 'starbucks',
+      'tim hortons', 'wendys', 'burger king', 'taco bell', 'subway', 'kfc',
+      'pizza hut', 'dominos', 'a&w', 'dairy queen'
     ];
     
     // Check if the business is one of the excluded types
     const isExcludedBusiness = excludedKeywords.some(keyword => businessText.includes(keyword));
     
-    // Skip this place if it's not a cannabis store or is an explicitly excluded type
-    if (!isCannabisStore || isExcludedBusiness) {
+    // Check if it's definitely not a cannabis business
+    const isDefinitelyNotCannabis = definitelyNotCannabis.some(keyword => businessText.includes(keyword));
+    
+    // Skip this place if:
+    // 1. It's definitely not a cannabis store OR
+    // 2. It doesn't have cannabis keywords AND is in the excluded list
+    if (isDefinitelyNotCannabis || (!isCannabisStore && isExcludedBusiness) || (!hasStrongCannabisIndicator && isExcludedBusiness)) {
       console.log(`Filtered out non-cannabis business: ${place.name}`);
+      console.log(`  - Definitely not cannabis: ${isDefinitelyNotCannabis}`);
+      console.log(`  - Has cannabis keywords: ${isCannabisStore}`);
+      console.log(`  - Has strong cannabis indicator: ${hasStrongCannabisIndicator}`);
+      console.log(`  - Has excluded keywords: ${isExcludedBusiness}`);
       // Return null to indicate this should be filtered out
       return null as any;
     }
+    
+    // Log what we're including
+    console.log(`Including business: ${place.name}`);
+    console.log(`  - Cannabis keywords match: ${isCannabisStore}`);
+    console.log(`  - Strong indicator match: ${hasStrongCannabisIndicator}`);
     
     // If we get here, it's likely a cannabis store
     const amenities = ['Cannabis Store'];
@@ -413,8 +454,15 @@ class GooglePlacesService {
   
   /**
    * Calculate distance between two coordinates using Haversine formula
+   * Returns accurate distance in kilometers between two geographic coordinates
    */
   private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    // If either coordinate is invalid or zero, return a large value
+    // This handles cases where user coordinates aren't properly set
+    if (!lat1 || !lon1 || !lat2 || !lon2) {
+      return 999; // Return a large distance to ensure these results appear last
+    }
+    
     const R = 6371; // Radius of the earth in km
     const dLat = this.toRadians(lat2 - lat1);
     const dLon = this.toRadians(lon2 - lon1);
@@ -424,6 +472,9 @@ class GooglePlacesService {
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
     const distance = R * c; // Distance in km
+    
+    // Log the distance for debugging
+    console.log(`Distance from [${lat1}, ${lon1}] to [${lat2}, ${lon2}] = ${distance.toFixed(2)}km`);
     return distance;
   }
   
@@ -445,17 +496,55 @@ class GooglePlacesService {
       const cleanAddress = address.trim();
       const isCanadianPostalCode = /^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/i.test(cleanAddress);
       
+      // Special handling for M6C postal code in Toronto
+      const isTorontoM6C = /^M6C\s?[0-9][A-Z][0-9]$/i.test(cleanAddress);
+      
       // Determine if this looks like a Canadian address based on province abbreviations
       const hasCanadianProvince = /\b(BC|AB|SK|MB|ON|QC|NB|NS|PE|NL|YT|NT|NU)\b/i.test(cleanAddress);
       
       // Create a more accurate search query
       let searchAddress = cleanAddress;
       
-      if (isCanadianPostalCode) {
+      // Special handling for Toronto M6C postal code area (St. Clair West)
+      if (isTorontoM6C) {
+        console.log("Toronto M6C postal code detected, using precise location");
+        // St. Clair West area precise coordinates
+        return { lat: 43.6815, lng: -79.4199 };
+      } else if (isCanadianPostalCode) {
         console.log("Canadian postal code detected, enhancing geocoding query");
         // Format postal code consistently as "A1A 1A1" with a space
         const formattedPostal = cleanAddress.replace(/^([A-Z][0-9][A-Z])\s*([0-9][A-Z][0-9])$/i, "$1 $2").toUpperCase();
         searchAddress = `${formattedPostal} Canada`;
+        
+        // For common postal code areas, use direct coordinate mapping to improve accuracy
+        const postalCodeMap: {[key: string]: {lat: number, lng: number}} = {
+          // Toronto
+          'M6C': {lat: 43.6815, lng: -79.4199}, // St. Clair West, Toronto
+          
+          // Vancouver area
+          'V6B': {lat: 49.2790, lng: -123.1180}, // Downtown Vancouver
+          'V5K': {lat: 49.2810, lng: -123.0440}, // East Vancouver
+          'V6E': {lat: 49.2850, lng: -123.1250}, // West End, Vancouver
+          
+          // Montreal
+          'H2Y': {lat: 45.5090, lng: -73.5540}, // Old Montreal
+          'H3B': {lat: 45.5010, lng: -73.5710}, // Downtown Montreal
+          
+          // Ottawa
+          'K1P': {lat: 45.4210, lng: -75.6980}, // Downtown Ottawa
+          
+          // Calgary
+          'T2P': {lat: 51.0450, lng: -114.0630}, // Downtown Calgary
+        };
+        
+        // Extract the first three characters (Forward Sortation Area - FSA)
+        const fsa = formattedPostal.substring(0, 3);
+        
+        // If we have specific coordinates for this postal code prefix, use them
+        if (postalCodeMap[fsa]) {
+          console.log(`Using cached coordinates for postal code ${fsa}`);
+          return postalCodeMap[fsa];
+        }
       } else if (hasCanadianProvince) {
         console.log("Canadian province detected, enhancing geocoding query");
         searchAddress = `${cleanAddress}, Canada`;
@@ -481,6 +570,16 @@ class GooglePlacesService {
       
       const location = response.data.results[0].geometry.location;
       console.log(`Geocoded to coordinates: ${location.lat}, ${location.lng}`);
+      
+      // Save the address components for better location context
+      if (response.data.results[0].address_components) {
+        console.log('Address components:', 
+          response.data.results[0].address_components
+            .map((comp: any) => `${comp.long_name} (${comp.types.join(', ')})`)
+            .join(', ')
+        );
+      }
+      
       return { lat: location.lat, lng: location.lng };
     } catch (error) {
       console.error('Error geocoding address:', error);

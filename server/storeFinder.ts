@@ -384,16 +384,28 @@ function extractCity(address: string): string {
     // Extract first 3 characters of postal code (Forward Sortation Area)
     const fsa = cleanAddress.substring(0, 3);
 
-    // More specific FSA mapping for Surrey area
-    if (fsa === 'V4N') {
-      return 'Surrey';
+    // Map specific postal code areas to precise neighborhoods
+    const fsaToLocationMap: {[key: string]: string} = {
+      // Greater Toronto Area
+      'M6C': 'Toronto-StClair',  // St. Clair West area
+      'M5V': 'Toronto-Downtown', // Downtown Toronto
+      'M4W': 'Toronto-Rosedale', // Rosedale area
+
+      // Greater Vancouver Area
+      'V4N': 'Surrey',           // Surrey
+      'V5K': 'Vancouver-East',   // East Vancouver
+      'V6B': 'Vancouver-Downtown', // Downtown Vancouver
+
+      // Montreal
+      'H2Y': 'Montreal-OldPort', // Old Montreal
+      'H3B': 'Montreal-Downtown' // Downtown Montreal
+    };
+
+    // If we have a specific location mapping for this postal code
+    if (fsaToLocationMap[fsa]) {
+      return fsaToLocationMap[fsa];
     }
-    
-    // Check if it's a specific Toronto postal code we want to handle
-    // M6C is St. Clair West area
-    if (fsa === 'M6C') {
-      return 'Toronto-StClair';
-    }
+
 
     const postalCityMap: { [key: string]: string } = {
       'V': 'Vancouver', // British Columbia
@@ -621,7 +633,7 @@ function generateAddresses(city: string, count: number): string[] {
     const streetNum = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
     const street = streets[i % streets.length];
     const postalCode = availablePostalCodes[i % availablePostalCodes.length];
-    return `${streetNum} ${street}, ${city}, ${state} ${postalCode}`;
+        return `${streetNum} ${street}, ${city}, ${state} ${postalCode}`;
   });
 }
 

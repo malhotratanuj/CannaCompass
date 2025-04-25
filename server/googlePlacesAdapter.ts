@@ -29,59 +29,62 @@ export class GooglePlacesStorageAdapter {
    */
   public async findNearbyDispensaries(
     location: UserLocation, 
-    radius: number,
-    strainIds?: string[]
+    radius: number = 10,
+    strainIds: string[] = []
   ): Promise<Dispensary[]> {
     try {
-      if (!this.isInitialized) {
-        // Fall back to static data if Google Places API is not available
-        console.log('Using static dispensary data - Google Places API not available');
-        return storage.findNearbyDispensaries(location, radius);
+      console.log(`Using Google Places API to search for dispensaries near: ${location.address || `${location.latitude},${location.longitude}`}`);
+
+      // Use googlePlacesService directly
+      if (!googlePlacesService.isAvailable()) {
+        console.error("Google Places API is not configured properly");
+        return Promise.resolve([]);
       }
 
-      console.log('Finding nearby dispensaries using Google Places API...');
-      console.log(`Location: ${location.latitude}, ${location.longitude}, Address: ${location.address}`);
-      
-      // If we don't have coordinates but have an address, geocode it
+      // First, try to get coordinates if we only have an address
       let lat = location.latitude;
       let lng = location.longitude;
-      
-      if ((lat === 0 && lng === 0) && location.address) {
+
+      // Canadian postal code pattern - always try to geocode these for accuracy
+      const isCanadianPostalCode = location.address && /^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/i.test(location.address.trim());
+
+      // If we have an address but no coordinates, or if it's a Canadian postal code
+      // (even if we have coordinates, postal code geocoding is more accurate)
+      if (location.address && (isCanadianPostalCode || !lat || !lng)) {
         try {
-          console.log(`Geocoding address: ${location.address}`);
           const coordinates = await googlePlacesService.geocodeAddress(location.address);
           lat = coordinates.lat;
           lng = coordinates.lng;
-          console.log(`Geocoded to: ${lat}, ${lng}`);
+          console.log(`Successfully geocoded address to: ${lat}, ${lng}`);
         } catch (error) {
-          console.error('Error geocoding address, falling back to default coordinates:', error);
+          console.error("Error geocoding address:", error);
+          return Promise.resolve([]);
         }
       }
-      
-      // If we still don't have valid coordinates, fall back to static data
-      if (lat === 0 && lng === 0) {
-        console.log('Invalid coordinates, using static dispensary data');
-        return storage.findNearbyDispensaries(location, radius);
+
+      if (!lat || !lng) {
+        console.error("Could not determine location coordinates");
+        return Promise.resolve([]);
       }
-      
+
       // Get dispensaries from Google Places API - no need to specify keyword 
       // as our enhanced implementation now does multiple searches with different keywords
       console.log("Finding nearby dispensaries using dynamic store finder...");
       const dispensaries = await googlePlacesService.findNearbyDispensaries(lat, lng, {
         radius: radius * 1000 // Convert km to meters
       });
-      
+
       // If we have strain IDs, we need to enhance dispensaries with inventory data
       if (strainIds && strainIds.length > 0) {
         // First get our app's built-in dispensary data for inventory information
         const staticDispensaries = await storage.findNearbyDispensaries(location, radius);
-        
+
         // Create a map of static dispensary inventory for quick lookup
         const staticInventoryMap = new Map<string, Dispensary>();
         staticDispensaries.forEach(d => {
           staticInventoryMap.set(d.name.toLowerCase(), d);
         });
-        
+
         // Try to match Google dispensaries with our static data based on name similarity
         for (const dispensary of dispensaries) {
           // Look for a name match to find inventory data
@@ -91,13 +94,13 @@ export class GooglePlacesStorageAdapter {
                                  d.name.toLowerCase().includes(nameKey) || 
                                  nameKey.includes(d.name.toLowerCase())
                                );
-          
+
           if (matchedStatic) {
             // Filter inventory to only include requested strains
             const filteredInventory = matchedStatic.inventory.filter(item => 
               !strainIds.length || strainIds.includes(item.strainId)
             );
-            
+
             // Add inventory data to Google Places dispensary
             dispensary.inventory = filteredInventory;
           } else {
@@ -106,7 +109,7 @@ export class GooglePlacesStorageAdapter {
           }
         }
       }
-      
+
       return dispensaries;
     } catch (error) {
       console.error('Error finding dispensaries with Google Places:', error);
@@ -115,7 +118,7 @@ export class GooglePlacesStorageAdapter {
       return storage.findNearbyDispensaries(location, radius);
     }
   }
-  
+
   /**
    * Get a dispensary by ID with Google Places API (with fallback)
    */
@@ -124,10 +127,10 @@ export class GooglePlacesStorageAdapter {
       if (!this.isInitialized) {
         return storage.getDispensaryById(dispensaryId);
       }
-      
+
       // Try to determine if this is a Google Places ID
       const isGooglePlaceId = dispensaryId.startsWith('ChI') || dispensaryId.length > 20;
-      
+
       if (isGooglePlaceId) {
         return await googlePlacesService.getDispensaryDetails(dispensaryId);
       } else {

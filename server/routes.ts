@@ -32,21 +32,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 app.get('/api/strains/search', async (req, res) => {
   try {
     const { q } = req.query;
-    
+
     if (!q || typeof q !== 'string') {
       return res.status(400).json({ error: 'Search query is required' });
     }
-    
+
     const searchTerm = q.toLowerCase();
     const allStrains = await storage.getStrains();
-    
+
     const results = allStrains.filter(strain => 
       strain.name.toLowerCase().includes(searchTerm) || 
       strain.type.toLowerCase().includes(searchTerm) ||
       (strain.effects && strain.effects.some(effect => effect.toLowerCase().includes(searchTerm))) ||
       (strain.flavors && strain.flavors.some(flavor => flavor.toLowerCase().includes(searchTerm)))
     );
-    
+
     return res.json(results.slice(0, 15)); // Limit to 15 results
   } catch (error) {
     console.error('Search error:', error);
@@ -278,41 +278,49 @@ app.get('/api/strains/search', async (req, res) => {
 
       const { latitude, longitude, address } = location;
 
-      // For Canadian addresses, we can proceed with just the address
-      const isCanadianAddress = address && 
-        ((/^[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]$/i.test(address.trim())) || // Postal code format
-         (/\b(BC|AB|SK|MB|ON|QC|NB|NS|PE|NL|YT|NT|NU)\b/i.test(address))); // Province code format
-
-      // If it's not a Canadian address, we require coordinates
-      if (!isCanadianAddress && (!latitude || !longitude)) {
-        return res.status(400).json({ message: "Location coordinates are required for non-Canadian addresses" });
+      //Improved Location Handling for Postal Codes
+      let searchLocation;
+      if(address){
+        const postalCodeRegex = /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/;
+        if(postalCodeRegex.test(address)){
+          searchLocation = address.toUpperCase().replace(/(\w{3})(\w{3})/,"$1 $2") + ", Canada";
+        } else {
+          searchLocation = address;
+        }
+      } else if (latitude && longitude) {
+          searchLocation = `${latitude},${longitude}`;
+      } else {
+        return res.status(400).json({message: "Invalid location provided."});
       }
 
       console.log("Finding nearby dispensaries using dynamic store finder...");
-      if (address) console.log(`Finding dispensaries near ${address}`);
-      if (latitude && longitude) console.log(`Location: ${latitude}, ${longitude}`);
+      console.log(`Searching near: ${searchLocation}`);
       console.log(`Selected strains: ${strainIds.join(', ')}`);
 
-      // Get the user's location
+      // Get the user's location.  Default to 0 if coordinates are missing (shouldn't happen with improved logic above)
+
       const userLocation: UserLocation = {
-        latitude: latitude || 0, // Default to 0 for Canadian addresses without coordinates
+        latitude: latitude || 0, 
         longitude: longitude || 0,
-        address
+        address: address || ""
       };
 
+
       // Default radius is 25 km (Google Places API works in meters, so we'll convert to meters in finder)
-      const radius = req.body.radius || 25;
+      const radius = req.body.radius || 25000; //radius in meters
+
 
       // Use our enhanced store finder to get dynamic results
       const dispensaries = await findNearbyDispensaries(
         userLocation,
         radius,
-        strainIds
+        strainIds,
+        searchLocation //Pass the formatted search location
       );
-      
+
       // Log the number of dispensaries found and show the first few for debugging
       console.log(`Successfully found ${dispensaries.length} dispensaries through Google Places API`);
-      
+
       if (dispensaries.length > 0) {
         dispensaries.slice(0, 3).forEach((d, i) => {
           console.log(`  ${i+1}. ${d.name} - ${d.address} (${d.distance.toFixed(1)}km)`);
@@ -324,6 +332,9 @@ app.get('/api/strains/search', async (req, res) => {
       return res.json({ dispensaries });
     } catch (error) {
       console.error("Error finding dispensaries:", error);
+      if(error instanceof Error){ //Improved error handling
+        console.error("Error message:", error.message);
+      }
 
       // Fallback to static data if store finder fails
       try {
@@ -826,16 +837,16 @@ app.get('/api/strains/search', async (req, res) => {
         // Generate a secure random token
         const resetToken = randomBytes(32).toString('hex');
         const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
-        
+
         // Store the reset token and expiry in the database
         await storage.setPasswordResetToken(user.id, resetToken, resetTokenExpiry);
-        
+
         // In production, send an email with the reset link
         // For this application, log it for demonstration purposes
         const resetUrl = `${process.env.APP_URL || 'http://localhost:5000'}/reset-password?token=${resetToken}`;
         console.log(`Password reset link for ${username}: ${resetUrl}`);
         console.log(`In production, an email would be sent to ${user.email} with this link`);
-        
+
         // You would typically use an email service like SendGrid, Mailgun, etc.
         // Example with a hypothetical email service:
         /*
@@ -855,13 +866,13 @@ app.get('/api/strains/search', async (req, res) => {
       res.status(500).json({ message: 'Internal server error' });
     }
   });
-  
+
   // Verify reset token
   app.get("/api/verify-reset-token/:token", async (req, res) => {
     try {
       const { token } = req.params;
       const isValid = await storage.verifyPasswordResetToken(token);
-      
+
       if (isValid) {
         res.json({ valid: true });
       } else {
@@ -872,22 +883,22 @@ app.get('/api/strains/search', async (req, res) => {
       res.status(500).json({ valid: false, message: 'Server error' });
     }
   });
-  
+
   // Reset password with token
   app.post("/api/reset-password", async (req, res) => {
     try {
       const { token, password } = req.body;
-      
+
       if (!token || !password) {
         return res.status(400).json({ message: 'Token and password are required' });
       }
-      
+
       // Hash the new password
       const hashedPassword = await hashPassword(password);
-      
+
       // Update the password if token is valid
       const success = await storage.resetPasswordWithToken(token, hashedPassword);
-      
+
       if (success) {
         res.json({ success: true, message: 'Password has been reset successfully' });
       } else {

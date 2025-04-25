@@ -39,18 +39,18 @@ const StoreFinder: FC<StoreFinderProps> = ({
   const { toast } = useToast();
   const { setStepForLocation } = useTutorial();
   const { celebrateMilestone } = useCelebration();
-  
+
   const [filters, setFilters] = useState<StoreFinderFilters>({
     useCurrentLocation: false,
     deliveryOption: 'both',
     maxDistance: 25, // Increased to 25km to match the server's default
   });
-  
+
   const [address, setAddress] = useState('');
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [sortOption, setSortOption] = useState<string>('distance');
-  
+
   // Query to get nearby dispensaries
   const { 
     data: dispensaries, 
@@ -65,11 +65,11 @@ const StoreFinder: FC<StoreFinderProps> = ({
         console.log('No userLocation provided, returning empty array');
         return Promise.resolve([]);
       }
-      
+
       // Get strain IDs to include in search
       const strainIds = selectedStrains.map(strain => strain.id);
       console.log('Making API request with:', { userLocation, maxDistance: filters.maxDistance, strainIds });
-      
+
       try {
         // Use the enhanced store finder with dynamic data
         const result = await findNearbyDispensaries(
@@ -86,52 +86,52 @@ const StoreFinder: FC<StoreFinderProps> = ({
     },
     enabled: !!userLocation, // Only run if we have location
   });
-  
+
   useEffect(() => {
     onStepChange(4);
     setStepForLocation('/store-finder');
   }, [onStepChange, setStepForLocation]);
-  
+
   const handlePrevStep = () => {
     setLocation('/recommendations');
   };
-  
+
   const handleSavePreferences = () => {
     toast({
       title: "Preferences Saved",
       description: "Your strain preferences have been saved successfully.",
     });
   };
-  
+
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAddress(e.target.value);
   };
-  
+
   const handleDeliveryOptionChange = (value: string) => {
     setFilters({
       ...filters,
       deliveryOption: value as DeliveryOption,
     });
   };
-  
+
   const handleDistanceChange = (value: string) => {
     setFilters({
       ...filters,
       maxDistance: parseInt(value),
     });
   };
-  
+
   const handleUseCurrentLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFilters({
       ...filters,
       useCurrentLocation: e.target.checked,
     });
-    
+
     if (e.target.checked) {
       fetchCurrentLocation();
     }
   };
-  
+
   const fetchCurrentLocation = async () => {
     try {
       setIsSearching(true);
@@ -147,7 +147,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
       });
     }
   };
-  
+
   const handleFindStores = () => {
     if (filters.useCurrentLocation) {
       fetchCurrentLocation();
@@ -156,7 +156,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
         title: "Searching for Stores",
         description: "Using your entered address to find nearby dispensaries with your selected strains.",
       });
-      
+
       // Use the entered address for store lookup
       // We'll use the address for geocoding on the server side
       setUserLocation({
@@ -172,73 +172,89 @@ const StoreFinder: FC<StoreFinderProps> = ({
       });
     }
   };
-  
+
   const handleSortChange = (value: string) => {
     setSortOption(value);
-    
+
     if (!dispensaries) return;
-    
+
     // We'll apply client-side sorting since we already have the data
     // In a real app, you might want to fetch new data with the sorting parameter
   };
-  
+
   // Log dispensaries data to console for debugging
   console.log('Dispensaries data received by component:', dispensaries);
-  
+
   // Filter dispensaries based on delivery options
   const filteredDispensaries = dispensaries ? dispensaries.filter(dispensary => {
     if (!dispensary || !dispensary.amenities) {
       console.error('Invalid dispensary object encountered:', dispensary);
       return false;
     }
-    
+
     if (filters.deliveryOption === 'both') return true;
-    
+
     try {
       const hasPickup = dispensary.amenities.some(a => a.includes('Pickup'));
       const hasDelivery = dispensary.amenities.some(a => a.includes('Delivery'));
-      
+
       if (filters.deliveryOption === 'pickup' && hasPickup) return true;
       if (filters.deliveryOption === 'delivery' && hasDelivery) return true;
     } catch (err) {
       console.error('Error filtering dispensary:', err, dispensary);
       return false;
     }
-    
+
     return false;
   }) : [];
-  
+
   console.log('Filtered dispensaries:', filteredDispensaries);
-  
+
   // Sort dispensaries based on selected option
-  const sortedDispensaries = [...(filteredDispensaries || [])].sort((a, b) => {
-    try {
-      switch (sortOption) {
-        case 'rating':
-          return b.rating - a.rating;
-        case 'price-low':
-          // For simplicity, sort by the first product's price
-          const aPrice = a.inventory[0]?.price || 0;
-          const bPrice = b.inventory[0]?.price || 0;
-          return aPrice - bPrice;
-        case 'price-high':
-          const aPriceHigh = a.inventory[0]?.price || 0;
-          const bPriceHigh = b.inventory[0]?.price || 0;
-          return bPriceHigh - aPriceHigh;
-        default: // 'distance'
+  const sortDispensaries = (dispensaries: Dispensary[]): Dispensary[] => {
+    if (!dispensaries) return [];
+
+    // Create a copy of the array to avoid mutation
+    const sortedDispensaries = [...dispensaries];
+
+    // Sort based on selected option
+    sortedDispensaries.sort((a, b) => {
+      if (sortOption === 'distance') {
+        // Primary sort by distance
+        return a.distance - b.distance;
+      } else if (sortOption === 'rating') {
+        // Primary sort by rating (higher first)
+        const ratingDiff = (b.rating || 0) - (a.rating || 0);
+
+        // Secondary sort by distance if ratings are equal
+        if (ratingDiff === 0) {
           return a.distance - b.distance;
+        }
+        return ratingDiff;
+      } else {
+        // Default to distance sorting
+        return a.distance - b.distance;
       }
-    } catch (err) {
-      console.error('Error sorting dispensaries:', err);
-      return 0;
-    }
-  });
-  
+    });
+
+    console.log('Sorted dispensaries by', sortOption, ':', 
+      sortedDispensaries.map(d => ({ 
+        name: d.name, 
+        distance: d.distance,
+        rating: d.rating
+      }))
+    );
+
+    return sortedDispensaries;
+  };
+
+  const sortedDispensaries = sortDispensaries(filteredDispensaries);
+
   console.log('Sorted dispensaries:', sortedDispensaries);
-  
+
   // Determine if we're showing results
   const isShowingResults = !isLoading && !isError && userLocation && sortedDispensaries.length > 0;
-  
+
   // Effect to trigger celebration when dispensaries are found
   useEffect(() => {
     if (isShowingResults && sortedDispensaries.length > 0) {
@@ -246,14 +262,14 @@ const StoreFinder: FC<StoreFinderProps> = ({
       celebrateMilestone('dispensary_found');
     }
   }, [isShowingResults, sortedDispensaries.length, celebrateMilestone]);
-  
+
   return (
     <div>
       <ProgressBar 
         currentStep={currentStep} 
         onRestart={() => setLocation('/mood-selection')}
       />
-      
+
       <div>
         <div className="mb-4 flex items-center">
           <Button
@@ -269,13 +285,13 @@ const StoreFinder: FC<StoreFinderProps> = ({
         </div>
         <p className="text-gray-600 mb-6">We'll help you locate dispensaries that carry these strains in your area.</p>
       </div>
-      
+
       <div id="location-form" className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
         <TutorialTooltip targetId="location-form" position="top">
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex-1">
               <h3 className="text-lg font-semibold mb-4">Your Location</h3>
-              
+
               <div className="mb-4">
                 <Label htmlFor="location-input" className="block text-sm font-medium text-gray-700 mb-1">
                   Enter your address or zip code
@@ -298,7 +314,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
                   </Button>
                 </div>
               </div>
-              
+
               <div className="mb-4">
                 <div className="flex items-center">
                   <input 
@@ -319,10 +335,10 @@ const StoreFinder: FC<StoreFinderProps> = ({
                 <p className="mt-1 text-xs text-gray-500">We'll only use your location to find nearby stores.</p>
               </div>
             </div>
-            
+
             <div className="flex-1">
               <h3 className="text-lg font-semibold mb-4">Delivery Options</h3>
-              
+
               <RadioGroup 
                 defaultValue="both" 
                 value={filters.deliveryOption}
@@ -342,7 +358,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
                   <Label htmlFor="option-both">Show Both</Label>
                 </div>
               </RadioGroup>
-              
+
               <div className="mt-4">
                 <Label htmlFor="distance" className="block text-sm font-medium text-gray-700 mb-1">
                   Maximum Distance
@@ -362,7 +378,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
               </div>
             </div>
           </div>
-          
+
           <div className="mt-6">
             <Button 
               onClick={handleFindStores}
@@ -382,14 +398,14 @@ const StoreFinder: FC<StoreFinderProps> = ({
           </div>
         </TutorialTooltip>
       </div>
-      
+
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600 mr-2" />
           <p>Searching for nearby dispensaries...</p>
         </div>
       )}
-      
+
       {isError && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
@@ -399,7 +415,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
           </AlertDescription>
         </Alert>
       )}
-      
+
       {userLocation && !isLoading && !isError && sortedDispensaries.length === 0 && (
         <Alert variant="destructive" className="mb-6 border-red-200 bg-red-50">
           <AlertCircle className="h-5 w-5 text-red-600" />
@@ -417,7 +433,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
           </div>
         </Alert>
       )}
-      
+
       {isShowingResults && (
         <div id="store-results" className="mb-8">
           <TutorialTooltip targetId="store-results" position="bottom">
@@ -440,7 +456,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
                 </Select>
               </div>
             </div>
-            
+
             <div className="space-y-4">
               {sortedDispensaries.slice(0, 3).map((dispensary) => (
                 <StoreCard 
@@ -449,7 +465,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
                   selectedStrains={selectedStrains}
                 />
               ))}
-              
+
               {sortedDispensaries.length > 3 && (
                 <div className="text-center mt-6">
                   <Button 
@@ -470,7 +486,7 @@ const StoreFinder: FC<StoreFinderProps> = ({
           </TutorialTooltip>
         </div>
       )}
-      
+
       <div className="flex justify-between mt-8">
         <Button
           onClick={handlePrevStep}
