@@ -21,6 +21,12 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient"; // Import the centralized queryClient
 import ResetPasswordPage from "@/pages/reset-password"; // Added import
+import { ThemeProvider } from "@/contexts/ThemeContext"; // Import ThemeProvider
+import ErrorBoundary from "@/components/ErrorBoundary"; //Import ErrorBoundary
+import BottomNavigation from "@/components/BottomNavigation"; //Import BottomNavigation
+import Favorites from "@/pages/Favorites"; //Import Favorites
+import { FavoritesProvider } from "@/contexts/FavoritesContext"; //Import FavoritesProvider
+
 
 function App() {
   const [location] = useLocation();
@@ -85,89 +91,90 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <CelebrationProvider>
-          <TutorialProvider>
-            <div className="min-h-screen flex flex-col bg-gray-50 text-gray-900">
-              <Header />
-
-              <main className="flex-grow">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  <Switch>
-                    <ProtectedRoute path="/" component={() => <Home onGetStarted={() => setCurrentStep(1)} />} />
-                    <ProtectedRoute 
-                      path="/mood-selection" 
-                      component={() => (
-                        <MoodSelection 
-                          currentStep={currentStep}
-                          onStepChange={handleStepChange}
-                          preferences={userPreferences}
-                          updatePreferences={updatePreferences}
-                        />
-                      )} 
+        <ThemeProvider>
+          <FavoritesProvider>
+            <TutorialProvider>
+              <CelebrationProvider>
+                <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+                  {!location.includes('/auth') && <Header />}
+                  <main className="flex-grow">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                      <ErrorBoundary>
+                        <Switch>
+                          <ProtectedRoute path="/" component={() => <Home onGetStarted={() => setCurrentStep(1)} />} />
+                          <ProtectedRoute path="/favorites" component={Favorites} />
+                          <ProtectedRoute 
+                            path="/mood-selection" 
+                            component={() => (
+                              <MoodSelection 
+                                currentStep={currentStep}
+                                onStepChange={handleStepChange}
+                                preferences={userPreferences}
+                                updatePreferences={updatePreferences}
+                              />
+                            )} 
+                          />
+                          <ProtectedRoute 
+                            path="/effects-preferences" 
+                            component={() => (
+                              <EffectsPreferences 
+                                currentStep={currentStep}
+                                onStepChange={handleStepChange}
+                                preferences={userPreferences}
+                                updatePreferences={updatePreferences}
+                              />
+                            )} 
+                          />
+                          <ProtectedRoute 
+                            path="/recommendations" 
+                            component={() => (
+                              <StrainRecommendations 
+                                currentStep={currentStep}
+                                onStepChange={handleStepChange}
+                                preferences={userPreferences}
+                                recommendedStrains={recommendedStrains}
+                                setRecommendedStrains={setRecommendedStrains}
+                                selectedStrains={selectedStrains}
+                                onStrainSelect={handleStrainSelect}
+                              />
+                            )} 
+                          />
+                          <ProtectedRoute 
+                            path="/store-finder" 
+                            component={() => (
+                              <StoreFinder 
+                                currentStep={currentStep}
+                                onStepChange={handleStepChange}
+                                selectedStrains={selectedStrains}
+                              />
+                            )} 
+                          />
+                          <ProtectedRoute 
+                            path="/strains/:id" 
+                            component={StrainDetail} 
+                          />
+                          <Route path="/auth" component={AuthPage} />
+                          <Route path="/reset-password" component={ResetPasswordPage} /> {/* Added route */}
+                          <Route component={NotFound} />
+                        </Switch>
+                      </ErrorBoundary>
+                    </div>
+                  </main>
+                  {!location.includes('/auth') && <Footer />}
+                  {!location.includes('/auth') && <BottomNavigation />}
+                  {showPrivacyConsent && (
+                    <PrivacyConsent 
+                      onAccept={() => setShowPrivacyConsent(false)}
+                      onCustomize={() => setShowPrivacyConsent(false)}
                     />
-                    <ProtectedRoute 
-                      path="/effects-preferences" 
-                      component={() => (
-                        <EffectsPreferences 
-                          currentStep={currentStep}
-                          onStepChange={handleStepChange}
-                          preferences={userPreferences}
-                          updatePreferences={updatePreferences}
-                        />
-                      )} 
-                    />
-                    <ProtectedRoute 
-                      path="/recommendations" 
-                      component={() => (
-                        <StrainRecommendations 
-                          currentStep={currentStep}
-                          onStepChange={handleStepChange}
-                          preferences={userPreferences}
-                          recommendedStrains={recommendedStrains}
-                          setRecommendedStrains={setRecommendedStrains}
-                          selectedStrains={selectedStrains}
-                          onStrainSelect={handleStrainSelect}
-                        />
-                      )} 
-                    />
-                    <ProtectedRoute 
-                      path="/store-finder" 
-                      component={() => (
-                        <StoreFinder 
-                          currentStep={currentStep}
-                          onStepChange={handleStepChange}
-                          selectedStrains={selectedStrains}
-                        />
-                      )} 
-                    />
-                    <ProtectedRoute 
-                      path="/strains/:id" 
-                      component={StrainDetail} 
-                    />
-                    <Route path="/auth" component={AuthPage} />
-                    <Route path="/reset-password" component={ResetPasswordPage} /> {/* Added route */}
-                    <Route component={NotFound} />
-                  </Switch>
+                  )}
+                  {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
+                  <Toaster />
                 </div>
-              </main>
-
-              <Footer />
-              <Toaster />
-
-              {showPrivacyConsent && (
-                <PrivacyConsent 
-                  onAccept={() => setShowPrivacyConsent(false)}
-                  onCustomize={() => setShowPrivacyConsent(false)}
-                />
-              )}
-
-              <WelcomeModal 
-                isOpen={showWelcomeModal}
-                onClose={() => setShowWelcomeModal(false)}
-              />
-            </div>
-          </TutorialProvider>
-        </CelebrationProvider>
+              </CelebrationProvider>
+            </TutorialProvider>
+          </FavoritesProvider>
+        </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

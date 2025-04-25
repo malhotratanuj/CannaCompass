@@ -1,8 +1,10 @@
 import { FC, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import Logo from './Logo';
-import { Menu, X, LogOut, User } from 'lucide-react';
+import SearchBar from './SearchBar';
+import { Menu, X, LogOut, User, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

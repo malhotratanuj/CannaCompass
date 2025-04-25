@@ -27,6 +27,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Health check for the RAG system
   app.get("/api/system/status", async (_req: Request, res: Response) => {
+
+// Search strains endpoint
+app.get('/api/strains/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || typeof q !== 'string') {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+    
+    const searchTerm = q.toLowerCase();
+    const allStrains = await storage.getStrains();
+    
+    const results = allStrains.filter(strain => 
+      strain.name.toLowerCase().includes(searchTerm) || 
+      strain.type.toLowerCase().includes(searchTerm) ||
+      (strain.effects && strain.effects.some(effect => effect.toLowerCase().includes(searchTerm))) ||
+      (strain.flavors && strain.flavors.some(flavor => flavor.toLowerCase().includes(searchTerm)))
+    );
+    
+    return res.json(results.slice(0, 15)); // Limit to 15 results
+  } catch (error) {
+    console.error('Search error:', error);
+    return res.status(500).json({ error: 'Failed to search strains' });
+  }
+});
+
     try {
       // Initialize vector database if not already done
       await vectorDb.initialize();
