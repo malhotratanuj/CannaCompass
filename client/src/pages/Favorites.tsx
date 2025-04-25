@@ -3,13 +3,13 @@ import React from 'react';
 import { useFavorites } from '@/hooks/use-favorites';
 import StrainCard from '@/components/StrainCard';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Heart } from 'lucide-react';
 
 const Favorites: React.FC = () => {
   const { favorites, isLoading } = useFavorites();
-  const [, navigate] = useNavigate();
+  const [, setLocation] = useLocation();
 
   if (isLoading) {
     return (
@@ -30,7 +30,7 @@ const Favorites: React.FC = () => {
           <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
             Discover strains and save your favorites for quick access later.
           </p>
-          <Button onClick={() => navigate('/mood-selection')}>
+          <Button onClick={() => setLocation('/mood-selection')}>
             Find Strains
           </Button>
         </div>
@@ -40,7 +40,7 @@ const Favorites: React.FC = () => {
             <StrainCard
               key={strain.id}
               strain={strain}
-              onSelect={() => navigate(`/strain/${strain.id}`)}
+              onSelect={() => setLocation(`/strains/${strain.id}`)}
             />
           ))}
         </div>
