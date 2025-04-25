@@ -3,6 +3,7 @@ import { Strain, RecommendationRequest } from '@shared/schema';
 import { vectorDb, createQuery } from './vectorDb';
 import { enhancedStrains } from './enhancedStrainData';
 import { anthropicRecommender } from './anthropic';
+import { topCanadianStrains, initializeTopCanadianStrains, scheduleStrainUpdates } from './canadianStrains';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -30,25 +31,55 @@ export class AIRecommender {
     console.log("AI Recommender initialized");
   }
 
-  // Generate recommendations using OpenAI
+  // Generate recommendations using OpenAI with top Canadian strains prioritized
   async getRecommendations(preferences: RecommendationRequest): Promise<Strain[]> {
     try {
-      console.log("Generating AI-enhanced recommendations");
+      console.log("Generating AI-enhanced recommendations with Canadian strain priority");
       
-      // Step 1: Use vector DB to retrieve relevant strains
+      // Ensure top Canadian strains are initialized
+      if (topCanadianStrains.length === 0) {
+        initializeTopCanadianStrains();
+      }
+      
+      // Step 1: Get potentially relevant strains from both sources
+      // First prioritize top Canadian strains
+      let candidateStrains: Strain[] = [...topCanadianStrains];
+      
+      // Then add other relevant strains from vector search
       const query = createQuery(preferences);
       console.log(`Query for vector search: "${query}"`);
-      const relevantStrains = await vectorDb.findSimilarStrains(query, 10);
+      const vectorRelevantStrains = await vectorDb.findSimilarStrains(query, 15);
       
-      if (relevantStrains.length === 0) {
+      // Add strains that aren't already in the candidate list
+      const existingIds = new Set(candidateStrains.map(strain => strain.id));
+      vectorRelevantStrains.forEach(strain => {
+        if (!existingIds.has(strain.id)) {
+          candidateStrains.push(strain);
+          existingIds.add(strain.id);
+        }
+      });
+      
+      // If we still don't have enough candidates, add more from enhanced strains
+      if (candidateStrains.length < 15) {
+        const additionalStrains = enhancedStrains
+          .filter(strain => !existingIds.has(strain.id))
+          .sort((a, b) => b.rating - a.rating)
+          .slice(0, 15 - candidateStrains.length);
+        
+        candidateStrains = [...candidateStrains, ...additionalStrains];
+      }
+      
+      console.log(`Using ${candidateStrains.length} candidate strains (including ${topCanadianStrains.length} top Canadian strains)`);
+      
+      if (candidateStrains.length === 0) {
         console.log("No relevant strains found, returning default recommendations");
         return enhancedStrains.slice(0, 6); // Return first 6 as default
       }
       
-      // Step 2: Use OpenAI to refine and explain the recommendations
-      const aiRecommendations = await this.generateAIRecommendations(preferences, relevantStrains);
+      // Step 2: Use OpenAI or Anthropic to refine and explain the recommendations
+      const aiRecommendations = await this.generateAIRecommendations(preferences, candidateStrains);
       
-      // Step 3: Map the recommended strain IDs back to full strain objects
+      // Step 3: Return the refined recommendations
       return aiRecommendations;
     } catch (error) {
       console.error("Error generating AI recommendations:", error);
