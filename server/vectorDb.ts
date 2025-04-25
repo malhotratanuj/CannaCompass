@@ -193,7 +193,7 @@ export function createQuery(preferences: RecommendationRequest): string {
     const experienceLevelContexts: Record<string, string> = {
       'beginner': 'low THC content for a beginner with minimal tolerance, avoid overwhelming effects',
       'intermediate': 'moderate THC content for someone with some experience and tolerance',
-      'experienced': 'higher THC content for an experienced user with substantial tolerance'
+      'experienced': 'higher THC content for a veteran user with substantial tolerance'
     };
     
     const experienceContext = experienceLevelContexts[preferences.experienceLevel] || `Experience: ${preferences.experienceLevel}`;

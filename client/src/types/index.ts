@@ -46,7 +46,7 @@ export const MOODS: Record<MoodType, MoodInfo> = {
   }
 };
 
-export type ExperienceLevel = 'beginner' | 'intermediate' | 'experienced';
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'experienced' | 'veteran';
 
 export const EFFECTS = [
   'Relaxation',

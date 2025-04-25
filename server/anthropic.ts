@@ -188,7 +188,7 @@ class AnthropicRecommender {
     } else if (query.experienceLevel === "intermediate") {
       experienceLevelTip = "With your intermediate experience, you likely understand your tolerance, but still exercise caution with this particular strain as effects can vary.";
     } else {
-      experienceLevelTip = "With your experienced background, you'll likely appreciate the nuanced effects of this strain, but still start with a standard dose to assess its specific impact on you.";
+      experienceLevelTip = "With your veteran background, you'll likely appreciate the nuanced effects of this strain, but still start with a standard dose to assess its specific impact on you.";
     }
 
     // Calculate a basic match score

@@ -163,7 +163,7 @@ const MoodSelection: FC<MoodSelectionProps> = ({
                   checked={selectedExperience === 'experienced'}
                   onChange={() => handleExperienceChange('experienced')}
                 />
-                <label htmlFor="experienced" className="ml-2 block text-sm font-medium text-gray-700">Experienced</label>
+                <label htmlFor="experienced" className="ml-2 block text-sm font-medium text-gray-700">Veteran</label>
               </div>
             </div>
           </TutorialTooltip>
